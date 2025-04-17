@@ -1,9 +1,9 @@
 /**
- * i've never picked a protected flower - Simplified Renderer
- * A focused, minimal rendering approach emphasizing poem text
+ * i've never picked a protected flower - Enhanced Pattern Renderer
+ * Integrating concepts from Everest Pipkin's original work
  */
 
-// Configuration
+// Configuration with expanded options
 const config = {
   // Visual settings
   backgroundColor: '#111',
@@ -11,8 +11,11 @@ const config = {
   highlightColor: '#ff5',
   patternDensity: 0.8,
   fontSize: 12,
-  characterSet: '#@*o+=-.', // Background pattern characters
+  // Expanded character sets for rich texture variety
+  characterSet: '#@*o+=-.░▒▓█▓▒░', // Background pattern characters
   highlightedChars: '█▓▒░',  // Used for poem emphasis
+  accentChars: '◆◇◈○●◐◑⊕⊗⊙⊚', // Special accent characters
+  borderChars: '┌┐└┘│─┼┬┴┤├╋╂╀╁╃╄╅╆╇╈╉╊', // Box drawing characters
   
   // Animation settings
   scrollSpeed: 0.2,
@@ -24,7 +27,18 @@ const config = {
   poemLineSpacing: 5,
   
   // Special characters for flowering effect
-  flowerChars: '@*o░▒▓█OQ•·°'
+  flowerChars: '@*o░▒▓█OQ•·°♠♣♥♦⚘❁✿✾✽✼✻✺✹✸✷✶✵✴✳✲✱✰✯✮✭✬',
+  wallpaperChars: '▓▒░█▓▒░┌┐└┘│─┼┬┴┤├╋╂╀╁╃╄╅╆╇╈╉╊',
+  
+  // Character encoding ranges for Unicode patterns
+  unicodeRanges: [
+    { start: 0x2500, end: 0x257F }, // Box Drawing
+    { start: 0x2580, end: 0x259F }, // Block Elements
+    { start: 0x25A0, end: 0x25FF }, // Geometric Shapes
+    { start: 0x2600, end: 0x26FF }, // Miscellaneous Symbols
+    { start: 0x2700, end: 0x27BF }, // Dingbats
+    { start: 0x1F300, end: 0x1F5FF }, // Miscellaneous Symbols and Pictographs
+  ]
 };
 
 // State
@@ -40,6 +54,11 @@ let transitionProgress = 0;
 let isTransitioning = false;
 let symbolMap = {};  // Maps coordinates to specific characters
 
+// Pattern state and settings
+let wallpaperGroup = "p6m";
+let baseRotation = 0;
+let patternType = "wallpaper"; // Options: "wallpaper", "glass", "flower"
+
 /**
  * Initialize the renderer
  */
@@ -53,14 +72,26 @@ function initialize(canvasId) {
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   
+  // Set a random wallpaper group
+  if (window.DRand && window.DRand.pick && window.groupNameString) {
+    wallpaperGroup = window.DRand.pick(window.groupNameString);
+  } else {
+    const groups = ["p1", "pm", "pmm", "pg", "cm", "pmg", "cmm", "pgg", "p2", "p3", "p3m1", "p31m", "p4", "p4m", "p4g", "p6", "p6m"];
+    wallpaperGroup = groups[Math.floor(Math.random() * groups.length)];
+  }
+  
+  // Set a random base rotation
+  if (window.DRand && window.DRand.dRandomFloat) {
+    baseRotation = window.DRand.dRandomFloat() * Math.PI * 2;
+  } else {
+    baseRotation = Math.random() * Math.PI * 2;
+  }
+  
   // Initialize the character grid
   initializeGrid();
   
   // Start animation loop
   requestAnimationFrame(render);
-  
-  // Set interval for poem transitions
-  setInterval(transitionToNextPoem, config.refreshInterval);
   
   return true;
 }
@@ -69,15 +100,18 @@ function initialize(canvasId) {
  * Resize canvas to fit window
  */
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  if (!canvas) return;
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
   initializeGrid(); // Reinitialize grid when canvas resizes
 }
 
 /**
- * Initialize the character grid
+ * Initialize the character grid with Unicode characters
  */
 function initializeGrid() {
+  if (!canvas) return;
+  
   const cols = Math.ceil(canvas.width / config.gridSize);
   const rows = Math.ceil(canvas.height / config.gridSize);
   
@@ -87,14 +121,39 @@ function initializeGrid() {
     const row = [];
     for (let x = 0; x < cols; x++) {
       // Randomly select a character from our set
-      const charIndex = Math.floor(Math.random() * config.characterSet.length);
-      const char = config.characterSet[charIndex];
+      let char;
+      
+      if (window.DRand && window.DRand.dRandomFloat) {
+        // Use deterministic random if available
+        if (window.DRand.dRandomFloat() < 0.1) {
+          // Occasionally use special characters from Unicode ranges
+          const rangeIndex = window.DRand.dRandomInt(config.unicodeRanges.length);
+          const range = config.unicodeRanges[rangeIndex];
+          const codePoint = window.DRand.dRandomInRange(range.start, range.end);
+          char = String.fromCodePoint(codePoint);
+        } else {
+          // Usually use our predefined character set
+          const charIndex = window.DRand.dRandomInt(config.characterSet.length);
+          char = config.characterSet[charIndex];
+        }
+      } else {
+        // Fallback to standard Math.random
+        if (Math.random() < 0.1) {
+          const rangeIndex = Math.floor(Math.random() * config.unicodeRanges.length);
+          const range = config.unicodeRanges[rangeIndex];
+          const codePoint = Math.floor(Math.random() * (range.end - range.start + 1)) + range.start;
+          char = String.fromCodePoint(codePoint);
+        } else {
+          const charIndex = Math.floor(Math.random() * config.characterSet.length);
+          char = config.characterSet[charIndex];
+        }
+      }
       
       // Initialize with random values
       row.push({
         char,
-        alpha: Math.random() * 0.5 + 0.1,
-        size: config.fontSize * (Math.random() * 0.4 + 0.8),
+        alpha: (window.DRand?.dRandomFloat() || Math.random()) * 0.5 + 0.1,
+        size: config.fontSize * ((window.DRand?.dRandomFloat() || Math.random()) * 0.4 + 0.8),
         highlight: false
       });
     }
@@ -109,12 +168,18 @@ function initializeGrid() {
  * Create symbolic patterns in the grid
  */
 function createSymbolicPatterns() {
-  const flowerCount = Math.floor(Math.random() * 3) + 2;
+  const rnd = window.DRand || { 
+    dRandomFloat: () => Math.random(),
+    dRandomInt: (max) => Math.floor(Math.random() * max),
+    pick: (arr) => arr[Math.floor(Math.random() * arr.length)]
+  };
+  
+  const flowerCount = rnd.dRandomInt(3) + 2;
   
   for (let f = 0; f < flowerCount; f++) {
-    const centerX = Math.floor(Math.random() * grid[0].length);
-    const centerY = Math.floor(Math.random() * grid.length);
-    const radius = Math.floor(Math.random() * 10) + 5;
+    const centerX = rnd.dRandomInt(grid[0]?.length || 10);
+    const centerY = rnd.dRandomInt(grid.length || 10);
+    const radius = rnd.dRandomInt(10) + 5;
     
     // Create a flower-like pattern
     for (let y = centerY - radius; y <= centerY + radius; y++) {
@@ -130,21 +195,21 @@ function createSymbolicPatterns() {
             if (normDist < 0.3) {
               // Center of flower
               symbolMap[`${x},${y}`] = {
-                char: config.flowerChars[Math.floor(Math.random() * 4)],
+                char: rnd.pick(config.flowerChars.substring(0, 4)),
                 alpha: 0.8,
                 size: config.fontSize * 1.2
               };
             } else if (normDist < 0.7) {
               // Middle area
               symbolMap[`${x},${y}`] = {
-                char: config.flowerChars[Math.floor(Math.random() * 6) + 4],
+                char: rnd.pick(config.flowerChars.substring(4, 10)),
                 alpha: 0.7 - normDist * 0.3,
                 size: config.fontSize * (1.1 - normDist * 0.3)
               };
-            } else if (Math.random() > 0.7) {
+            } else if (rnd.dRandomFloat() > 0.7) {
               // Outer petals - more sparse
               symbolMap[`${x},${y}`] = {
-                char: config.flowerChars[Math.floor(Math.random() * config.flowerChars.length)],
+                char: rnd.pick(config.flowerChars),
                 alpha: 0.5 - normDist * 0.3,
                 size: config.fontSize * (1 - normDist * 0.2)
               };
@@ -180,20 +245,40 @@ function transitionToNextPoem() {
     isTransitioning = true;
     transitionProgress = 0;
   } else {
-    // Otherwise, get a new poem
-    // In a real implementation, you would call your poem generator here
-    const dummyPoem = [
-      "i've never picked a protected flower",
-      "morning light bathes silent petals",
-      "nature speaks in whispered verses",
-      "each stem holds memories of rain",
-      "blossoms transform beneath the moon"
-    ];
+    // Otherwise, get a new poem from the poem generator
+    let newPoem;
+    if (window.PoemGenerator && typeof window.PoemGenerator.generatePoem === 'function') {
+      const seedWord = window.PoemGenerator.getRandomSeedWord();
+      newPoem = window.PoemGenerator.generatePoem(seedWord, 5);
+    } else {
+      // Fallback poem if generator not available
+      newPoem = [
+        "i've never picked a protected flower",
+        "morning light bathes silent petals",
+        "nature speaks in whispered verses",
+        "each stem holds memories of rain",
+        "blossoms transform beneath the moon"
+      ];
+    }
     
-    nextPoem = [...dummyPoem];
+    nextPoem = [...newPoem];
     isTransitioning = true;
     transitionProgress = 0;
   }
+}
+
+/**
+ * Set the pattern type
+ */
+function setPatternType(type) {
+  patternType = type;
+}
+
+/**
+ * Set the wallpaper group for wallpaper patterns
+ */
+function setWallpaperGroup(group) {
+  wallpaperGroup = group;
 }
 
 /**
@@ -221,11 +306,37 @@ function render(timestamp) {
     }
   }
   
-  // Render background character grid
-  renderGrid();
-  
-  // Render the poem text
-  renderPoem();
+  // Choose rendering method based on pattern type
+  switch (patternType) {
+    case "wallpaper":
+      if (typeof window.drawPattern === 'function') {
+        window.drawPattern(canvas.id, wallpaperGroup);
+      } else {
+        renderGrid(); // Fallback
+        renderPoem();
+      }
+      break;
+    case "glass":
+      if (typeof window.drawGlass === 'function') {
+        window.drawGlass(canvas.id);
+      } else {
+        renderGrid(); // Fallback
+        renderPoem();
+      }
+      break;
+    case "flower":
+      if (typeof window.drawFlower === 'function') {
+        window.drawFlower(canvas.id, currentPoem);
+      } else {
+        renderGrid(); // Fallback
+        renderPoem();
+      }
+      break;
+    default:
+      // Default rendering
+      renderGrid();
+      renderPoem();
+  }
   
   // Continue animation
   requestAnimationFrame(render);
@@ -235,6 +346,8 @@ function render(timestamp) {
  * Render the character grid
  */
 function renderGrid() {
+  if (!canvas || !ctx || !grid || grid.length === 0) return;
+  
   const cols = grid[0].length;
   const rows = grid.length;
   
@@ -277,13 +390,16 @@ function renderGrid() {
  * Render the poem text
  */
 function renderPoem() {
-  if (currentPoem.length === 0) return;
+  if (currentPoem.length === 0 || !canvas || !ctx) return;
   
   const centerX = canvas.width / 2;
   const startY = canvas.height / 2 - ((currentPoem.length - 1) * config.poemLineSpacing) / 2;
   
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  
+  // Update the current poem display for the UI
+  updatePoemDisplay(currentPoem);
   
   // Render current poem
   for (let i = 0; i < currentPoem.length; i++) {
@@ -297,6 +413,16 @@ function renderPoem() {
       const lineY = startY + i * config.poemLineSpacing;
       renderPoemLine(nextPoem[i], centerX, lineY, transitionAlpha);
     }
+  }
+}
+
+/**
+ * Update the poem display in the UI
+ */
+function updatePoemDisplay(poem) {
+  const poemDisplay = document.getElementById('current-poem');
+  if (poemDisplay) {
+    poemDisplay.innerHTML = poem.join('<br>');
   }
 }
 
@@ -333,7 +459,7 @@ function renderPoemLine(line, x, y, alpha) {
     const wordWidth = ctx.measureText(word + ' ').width;
     
     // Check if this is a key nature/flower word to highlight
-    const keyWords = ['flower', 'petal', 'bloom', 'nature', 'garden', 'light', 'rain', 'sun', 'moon'];
+    const keyWords = ['flower', 'petal', 'bloom', 'nature', 'garden', 'light', 'rain', 'sun', 'moon', 'seed', 'root', 'blossom', 'scent'];
     const isKeyWord = keyWords.some(key => word.toLowerCase().includes(key));
     
     if (isKeyWord) {
@@ -351,8 +477,88 @@ function renderPoemLine(line, x, y, alpha) {
   ctx.shadowBlur = 0;
 }
 
+/**
+ * Create an ASCII art representation of a poem
+ * Inspired by Pipkin's original jscii implementation
+ * @param {string[]} poem - The poem to render
+ * @param {Object} options - Rendering options
+ * @returns {string} ASCII art representation
+ */
+function createAsciiArt(poem, options = {}) {
+  const {
+    width = 80,
+    height = 40,
+    chars = '#@*o+=-.░▒▓█▓▒░ ',
+    density = 0.7
+  } = options;
+  
+  // Create a blank canvas of spaces
+  const canvas = Array(height).fill().map(() => Array(width).fill(' '));
+  
+  // Add a border of characters
+  for (let x = 0; x < width; x++) {
+    canvas[0][x] = '#';
+    canvas[height-1][x] = '#';
+  }
+  
+  for (let y = 0; y < height; y++) {
+    canvas[y][0] = '#';
+    canvas[y][width-1] = '#';
+  }
+  
+  // Place the poem in the center
+  const startY = Math.floor(height / 2) - Math.floor(poem.length / 2);
+  
+  for (let i = 0; i < poem.length; i++) {
+    const line = poem[i];
+    const startX = Math.floor(width / 2) - Math.floor(line.length / 2);
+    
+    for (let j = 0; j < line.length; j++) {
+      if (startY + i >= 0 && startY + i < height && startX + j >= 0 && startX + j < width) {
+        canvas[startY + i][startX + j] = line[j];
+      }
+    }
+  }
+  
+  // Add random characters to fill in the space
+  const rnd = window.DRand || { 
+    dRandomFloat: () => Math.random(),
+    dRandomInt: (max) => Math.floor(Math.random() * max)
+  };
+  
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      // Skip the poem text
+      let isPoemText = false;
+      for (let i = 0; i < poem.length; i++) {
+        const line = poem[i];
+        const startX = Math.floor(width / 2) - Math.floor(line.length / 2);
+        const startY = Math.floor(height / 2) - Math.floor(poem.length / 2);
+        
+        if (y >= startY + i && y <= startY + i && 
+            x >= startX && x < startX + line.length) {
+          isPoemText = true;
+          break;
+        }
+      }
+      
+      if (!isPoemText && canvas[y][x] === ' ' && rnd.dRandomFloat() < density) {
+        const charIndex = rnd.dRandomInt(chars.length);
+        canvas[y][x] = chars[charIndex];
+      }
+    }
+  }
+  
+  // Convert to string
+  return canvas.map(row => row.join('')).join('\n');
+}
+
 // Export module
 window.SimpleRenderer = {
   initialize,
-  setPoem
+  setPoem,
+  setPatternType,
+  setWallpaperGroup,
+  transitionToNextPoem,
+  createAsciiArt
 };
