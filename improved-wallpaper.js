@@ -877,20 +877,6 @@ function drawFlower(c, poem) {
 // Enhanced glass generator with animation
 function drawGlass(c, poem) {
     var canvas = document.getElementById(c);
-    
-    // Check if canvas exists - if not, create it
-    if (!canvas) {
-        console.log(`Canvas element ${c} not found, creating it`);
-        canvas = document.createElement('canvas');
-        canvas.id = c;
-        
-        // Find the canvas container or append to body as fallback
-        const container = document.getElementById('canvas-container') || document.body;
-        canvas.width = container.clientWidth || window.innerWidth;
-        canvas.height = container.clientHeight || window.innerHeight;
-        container.appendChild(canvas);
-    }
-    
     context = canvas.getContext('2d');
     width = canvas.clientWidth;
     height = canvas.clientHeight;
@@ -936,7 +922,7 @@ function drawGlass(c, poem) {
         context.save();
         context.globalAlpha = 0.4;
         context.globalCompositeOperation = "overlay";
-        context.fillStyle = pick(animationState.colorPalette || ["#FFD700", "#FFA500", "#FF8C00"]);
+        context.fillStyle = pick(animationState.colorPalette);
         context.fill();
         context.restore();
         
@@ -968,7 +954,7 @@ function drawGlass(c, poem) {
             context.save();
             context.globalAlpha = 0.4;
             context.globalCompositeOperation = "overlay";
-            context.fillStyle = pick(animationState.colorPalette || ["#FF007F", "#FF66B2", "#FF3399"]);
+            context.fillStyle = pick(animationState.colorPalette);
             context.restore();
             
             context.lineTo(
@@ -979,7 +965,7 @@ function drawGlass(c, poem) {
             context.save();
             context.globalAlpha = 0.4;
             context.globalCompositeOperation = "overlay";
-            context.fillStyle = pick(animationState.colorPalette || ["#E6E6FA", "#9370DB", "#8A2BE2"]);
+            context.fillStyle = pick(animationState.colorPalette);
             context.fill();
             context.restore();
             
@@ -1008,7 +994,7 @@ function drawGlass(c, poem) {
             context.save();
             context.globalAlpha = 0.4;
             context.globalCompositeOperation = "overlay";
-            context.fillStyle = pick(animationState.colorPalette || ["#FFD700", "#FFA500", "#FF8C00"]);
+            context.fillStyle = pick(animationState.colorPalette);
             context.fill();
             context.restore();
             
@@ -1057,7 +1043,7 @@ function drawGlass(c, poem) {
             
             context.save();
             context.globalCompositeOperation = "lighter";
-            context.fillStyle = pick(animationState.colorPalette || ["#FFF0F5", "#FFB6C1", "#FF69B4"]);
+            context.fillStyle = pick(animationState.colorPalette);
             context.fill();
             context.restore();
             
@@ -1076,10 +1062,8 @@ function drawGlass(c, poem) {
     animateGlass();
     
     // Add event listeners for interaction
-    if (canvas) {
-        canvas.addEventListener('mousemove', handleMouseMove);
-        canvas.addEventListener('touchmove', handleTouchMove);
-    }
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('touchmove', handleTouchMove);
 }
 
 // Randomize the pattern
