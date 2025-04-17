@@ -5,98 +5,201 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>i've never picked a protected flower</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #111;
-            color: #ddd;
-            font-family: "Unifont", monospace;
-        }
-        
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .poem-canvas {
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            border: none;
-        }
-        
-        .control-panel {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 1000;
-            width: 250px;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid #444;
-            transition: opacity 0.3s;
-            opacity: 0.2;
-        }
-        
-        .control-panel:hover {
-            opacity: 1;
-        }
-        
-        .control-group {
-            margin-bottom: 10px;
-        }
-        
-        .control-group label {
-            display: block;
-            margin-bottom: 3px;
-        }
-        
-        .control-group input, .control-group select {
-            width: 100%;
-            background-color: #333;
-            color: #ddd;
-            border: 1px solid #555;
-            padding: 5px;
-            border-radius: 3px;
-        }
-        
-        button {
-            background-color: #444;
-            color: #ddd;
-            border: 1px solid #555;
-            padding: 8px 12px;
-            margin-top: 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            width: 100%;
-        }
-        
-        button:hover {
-            background-color: #555;
-        }
-        
-        #current-poem {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 1000;
-            max-width: 50%;
-            border: 1px solid #444;
-            font-family: monospace;
-            white-space: pre-wrap;
-            opacity: 0.8;
-        }
+    /* Updated CSS for index.html */
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #111;
+        color: #ddd;
+        font-family: "Unifont", monospace;
+        transition: background-color 0.5s, color 0.5s;
+    }
+
+    body.white-mode {
+        background-color: #fff;
+        color: #111;
+    }
+
+    #canvas-container {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .poem-canvas {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .control-panel {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: #ddd;
+        padding: 12px;
+        border-radius: 5px;
+        z-index: 1000;
+        width: 260px;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: 1px solid #444;
+        transition: opacity 0.3s, background-color 0.5s, color 0.5s;
+        opacity: 0.2;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    body.white-mode .control-panel {
+      background-color: rgba(255, 255, 255, 0.9);
+        color: #111;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .control-panel:hover {
+        opacity: 1;
+    }
+
+    .control-group {
+        margin-bottom: 12px;
+    }
+
+    .control-group label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: bold;
+    }
+
+    .control-group input, .control-group select {
+        width: 100%;
+        background-color: #333;
+        color: #ddd;
+        border: 1px solid #555;
+        padding: 6px;
+        border-radius: 3px;
+        transition: background-color 0.5s, color 0.5s;
+    }
+
+    body.white-mode .control-group input, 
+    body.white-mode .control-group select {
+        background-color: #f5f5f5;
+        color: #111;
+        border: 1px solid #ddd;
+    }
+
+    button {
+        background-color: #444;
+        color: #ddd;
+        border: 1px solid #555;
+        padding: 8px 12px;
+        margin-top: 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        width: 100%;
+        transition: background-color 0.2s;
+        font-weight: bold;
+    }
+
+    body.white-mode button {
+        background-color: #eee;
+        color: #111;
+        border: 1px solid #ccc;
+    }
+
+    button:hover {
+        background-color: #555;
+    }
+
+    body.white-mode button:hover {
+        background-color: #ddd;
+    }
+
+    #current-poem {
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: #ddd;
+        padding: 12px;
+        border-radius: 5px;
+        z-index: 1000;
+        max-width: 50%;
+        border: 1px solid #444;
+        font-family: monospace;
+        white-space: pre-wrap;
+        opacity: 0.8;
+        transition: background-color 0.5s, color 0.5s;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    body.white-mode #current-poem {
+        background-color: rgba(255, 255, 255, 0.9);
+        color: #111;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .keyboard-shortcuts {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #444;
+        font-size: 0.85em;
+    }
+
+    body.white-mode .keyboard-shortcuts {
+        border-top: 1px solid #ddd;
+    }
+
+    .keyboard-shortcuts h4 {
+        margin-top: 0;
+        margin-bottom: 8px;
+    }
+
+    .shortcut {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .key {
+        background-color: #333;
+        color: #ddd;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-family: monospace;
+        border: 1px solid #555;
+    }
+
+    body.white-mode .key {
+        background-color: #eee;
+        color: #111;
+        border: 1px solid #ccc;
+    }
+
+    #show-controls {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        padding: 5px 10px;
+        background-color: #333;
+        color: #ddd;
+        border: 1px solid #555;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: background-color 0.5s, color 0.5s;
+    }
+
+    body.white-mode #show-controls {
+        background-color: #eee;
+        color: #111;
+        border: 1px solid #ccc;
+    }
+
     </style>
 </head>
 <body>
@@ -110,4 +213,37 @@
     <script src="pattern-renderer.js"></script>
     <script src="main.js"></script>
 </body>
+<script>
+  // Add keyboard shortcut helper to the control panel
+  function addShortcutHelp() {
+    const panel = document.getElementById('control-panel');
+    if (!panel) return;
+    
+    const helpDiv = document.createElement('div');
+    helpDiv.className = 'keyboard-shortcuts';
+    helpDiv.innerHTML = `
+      <h4>Keyboard Shortcuts</h4>
+      <div class="shortcut"><span>Space</span><span class="key">Generate poem</span></div>
+      <div class="shortcut"><span>W</span><span class="key">Toggle white mode</span></div>
+      <div class="shortcut"><span>C</span><span class="key">Column density</span></div>
+      <div class="shortcut"><span>P</span><span class="key">Paper hole size</span></div>
+      <div class="shortcut"><span>1-5</span><span class="key">Pattern type</span></div>
+      <div class="shortcut"><span>↑/↓</span><span class="key">Animation speed</span></div>
+      <div class="shortcut"><span>←/→</span><span class="key">Change pattern</span></div>
+      <div class="shortcut"><span>H</span><span class="key">Hide controls</span></div>
+    `;
+    
+    panel.appendChild(helpDiv);
+  }
+  
+  // Call this after the control panel is created
+  setTimeout(addShortcutHelp, 1000);
+  
+  // Handle white mode class toggle
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'w') {
+      document.body.classList.toggle('white-mode');
+    }
+  });
+</script>
 </html>

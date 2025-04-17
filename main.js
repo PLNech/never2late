@@ -9,7 +9,7 @@ const state = {
   currentPoem: [],
   poems: [],
   seedWord: "flower", // Default seed word
-  patternType: "wallpaper", // Options: "wallpaper", "glass", "flower"
+  patternType: "wallpaper", // Options: "wallpaper", "glass", "flower", "columns", "paper"
   wallpaperGroup: "p6m", // Default wallpaper symmetry group
   animationSpeed: 0.15,
   colorScheme: { bg: "#222", fg: "#ddd" },
@@ -24,7 +24,11 @@ const state = {
   showControls: true,
   fontFamily: "monospace",
   autoUpdate: true,
-  useSeed: null // For deterministic generation
+  useSeed: null, // For deterministic generation
+  whiteMode: false, // Toggle for white background mode
+  highlightColor: "#ff5", // Highlight color for poems in patterns
+  columnDensity: 0.8, // Density parameter for column mode
+  paperHoleSize: 0.4, // Hole size for paper mode (0-1)
 };
 
 // Canvas references
@@ -169,6 +173,10 @@ function updateDisplay() {
   // Reset animations array
   animations = [];
   
+  // Update background color based on white mode
+  document.body.style.backgroundColor = state.whiteMode ? '#fff' : state.colorScheme.bg;
+  document.body.style.color = state.whiteMode ? '#111' : state.colorScheme.fg;
+  
   // Distribute the poem lines across the canvases
   const linesPerCanvas = Math.ceil(state.currentPoem.length / canvases.length);
   
@@ -197,6 +205,11 @@ function updateDisplay() {
       window.SimpleRenderer.setPoem(lines);
       window.SimpleRenderer.setPatternType(state.patternType);
       window.SimpleRenderer.setWallpaperGroup(state.wallpaperGroup);
+      window.SimpleRenderer.setWhiteMode(state.whiteMode);
+      window.SimpleRenderer.setParams({
+        columnDensity: state.columnDensity,
+        paperHoleSize: state.paperHoleSize
+      });
     }
   }
   
@@ -237,6 +250,10 @@ function startAnimation() {
           drawGlassWithPoem(anim.canvas.id, anim.lines, anim.offset);
         } else if (anim.pattern === "flower") {
           drawFlowerWithPoem(anim.canvas.id, anim.lines, anim.offset);
+        } else if (anim.pattern === "columns") {
+          drawColumnsWithPoem(anim.canvas.id, anim.lines, anim.offset);
+        } else if (anim.pattern === "paper") {
+          drawPaperWithPoem(anim.canvas.id, anim.lines, anim.offset);
         }
       }
     }
@@ -315,9 +332,10 @@ function createControlPanel() {
         <option value="wallpaper">Wallpaper</option>
         <option value="glass">Glass</option>
         <option value="flower">Flower</option>
+        <option value="columns">Columns</option>
+        <option value="paper">Paper</option>
       </select>
     </div>
-    
     <div class="control-group wallpaper-controls">
       <label for="wallpaper-group">Wallpaper Group:</label>
       <select id="wallpaper-group">
@@ -527,6 +545,7 @@ function handleControlChange(control, value) {
   }
 }
 
+
 function initializeKeyboardController() {
   // Set up keyboard controls
   document.addEventListener('keydown', (event) => {
@@ -547,7 +566,7 @@ function initializeKeyboardController() {
         break;
       case 'ArrowLeft':
         // Previous pattern type
-        const patternTypes = ['wallpaper', 'glass', 'flower'];
+        const patternTypes = ['wallpaper', 'glass', 'flower', 'columns', 'paper'];
         let index = patternTypes.indexOf(state.patternType);
         index = (index - 1 + patternTypes.length) % patternTypes.length;
         state.patternType = patternTypes[index];
@@ -556,7 +575,7 @@ function initializeKeyboardController() {
         break;
       case 'ArrowRight':
         // Next pattern type
-        const patterns = ['wallpaper', 'glass', 'flower'];
+        const patterns = ['wallpaper', 'glass', 'flower', 'columns', 'paper'];
         let patternIndex = patterns.indexOf(state.patternType);
         patternIndex = (patternIndex + 1) % patterns.length;
         state.patternType = patterns[patternIndex];
@@ -602,11 +621,62 @@ function initializeKeyboardController() {
           }
         }
         break;
+      case 'w':
+        // Toggle white mode
+        state.whiteMode = !state.whiteMode;
+        document.body.style.backgroundColor = state.whiteMode ? '#fff' : state.colorScheme.bg;
+        document.body.style.color = state.whiteMode ? '#111' : state.colorScheme.fg;
+        updateDisplay();
+        break;
+      case 'c':
+        // Toggle column density
+        state.columnDensity = (state.columnDensity + 0.2) % 1.2;
+        if (state.columnDensity < 0.2) state.columnDensity = 0.2;
+        updateDisplay();
+        break;
+      case 'p':
+        // Adjust paper hole size
+        state.paperHoleSize = (state.paperHoleSize + 0.1) % 0.8;
+        if (state.paperHoleSize < 0.1) state.paperHoleSize = 0.1;
+        updateDisplay();
+        break;
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+        // Set pattern type directly
+        const typeMap = {
+          '1': 'wallpaper',
+          '2': 'glass',
+          '3': 'flower',
+          '4': 'columns',
+          '5': 'paper'
+        };
+        state.patternType = typeMap[event.key];
+        document.getElementById('pattern-type').value = state.patternType;
+        updateDisplay();
+        break;
     }
   });
 }
 
-// Initialize patternRenderer if needed
+function drawColumnsWithPoem(canvasId, poemLines, offset) {
+  if (window.patternRenderer && typeof window.patternRenderer.renderColumns === 'function') {
+    window.patternRenderer.renderColumns(canvasId, poemLines, offset);
+  } else {
+    console.warn("Columns renderer not initialized properly");
+  }
+}
+
+function drawPaperWithPoem(canvasId, poemLines, offset) {
+  if (window.patternRenderer && typeof window.patternRenderer.renderPaper === 'function') {
+    window.patternRenderer.renderPaper(canvasId, poemLines, offset);
+  } else {
+    console.warn("Paper renderer not initialized properly");
+  }
+}
+
 window.patternRenderer = {
   renderPattern: function(canvasId, groupName, poemLines, offset) {
     if (window.drawPattern) {
@@ -621,6 +691,125 @@ window.patternRenderer = {
   renderFlower: function(canvasId, poemLines, offset) {
     if (window.drawFlower) {
       window.drawFlower(canvasId, poemLines);
+    }
+  },
+  renderColumns: function(canvasId, poemLines, offset) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Set color based on white mode
+    const bgColor = state.whiteMode ? '#fff' : '#111';
+    const fgColor = state.whiteMode ? '#111' : '#ddd';
+    const highlightColor = state.whiteMode ? '#990' : '#ff5';
+    
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Generate columns based on character frequency in the poem
+    if (poemLines && poemLines.length > 0) {
+      const text = poemLines.join(' ');
+      const charFreq = {};
+      
+      // Count character frequencies
+      for (let char of text) {
+        if (!charFreq[char]) charFreq[char] = 0;
+        charFreq[char]++;
+      }
+      
+      // Create columns
+      const colWidth = canvas.width / 80;
+      const charKeys = Object.keys(charFreq);
+      
+      for (let i = 0; i < 80; i++) {
+        // Use frequencies to determine column height and density
+        const charIndex = i % charKeys.length;
+        const char = charKeys[charIndex];
+        const freq = charFreq[char] / text.length;
+        const colHeight = canvas.height * freq * 10 * state.columnDensity;
+        
+        // Draw column of characters
+        ctx.fillStyle = fgColor;
+        ctx.font = '10px monospace';
+        
+        const x = i * colWidth;
+        const density = freq * 10 * state.columnDensity;
+        
+        for (let y = 0; y < canvas.height; y += 10) {
+          if (Math.random() < density) {
+            const randomChar = charKeys[Math.floor(Math.random() * charKeys.length)];
+            ctx.fillText(randomChar, x, y);
+          }
+        }
+      }
+      
+      // Draw poem lines as highlights
+      ctx.fillStyle = highlightColor;
+      ctx.font = 'bold 14px monospace';
+      
+      for (let i = 0; i < poemLines.length; i++) {
+        const y = canvas.height * (0.3 + i * 0.1);
+        ctx.fillText(poemLines[i], 20, y);
+      }
+    }
+  },
+  renderPaper: function(canvasId, poemLines, offset) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Set color based on white mode
+    const bgColor = state.whiteMode ? '#fff' : '#111';
+    const fgColor = state.whiteMode ? '#111' : '#ddd';
+    
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Create paper with hole pattern
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const maxRadius = Math.min(canvas.width, canvas.height) * 0.4;
+    const holeRadius = maxRadius * state.paperHoleSize;
+    
+    ctx.font = '10px monospace';
+    ctx.fillStyle = fgColor;
+    
+    // Draw the entire canvas with characters
+    const chars = state.whiteMode ? '#' : '░▒▓█';
+    const gridSize = 10;
+    
+    for (let y = 0; y < canvas.height; y += gridSize) {
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        // Calculate distance from center
+        const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        
+        // Create a flower-shaped hole
+        const angle = Math.atan2(y - centerY, x - centerX);
+        const petalEffect = 0.2 * Math.sin(6 * angle) + 1; // 6 petals
+        const adjustedRadius = holeRadius * petalEffect;
+        
+        if (distance > adjustedRadius) {
+          // Outside the flower hole, draw characters
+          const charIndex = Math.floor(Math.random() * chars.length);
+          ctx.fillText(chars[charIndex], x, y);
+        }
+      }
+    }
+    
+    // Draw the poem in the center
+    if (poemLines && poemLines.length > 0) {
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = fgColor;
+      ctx.textAlign = 'center';
+      
+      for (let i = 0; i < poemLines.length; i++) {
+        const y = centerY + (i - poemLines.length/2) * 20;
+        ctx.fillText(poemLines[i], centerX, y);
+      }
     }
   }
 };

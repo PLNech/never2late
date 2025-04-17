@@ -29,6 +29,8 @@ const config = {
   // Special characters for flowering effect
   flowerChars: '@*o░▒▓█OQ•·°♠♣♥♦⚘❁✿✾✽✼✻✺✹✸✷✶✵✴✳✲✱✰✯✮✭✬',
   wallpaperChars: '▓▒░█▓▒░┌┐└┘│─┼┬┴┤├╋╂╀╁╃╄╅╆╇╈╉╊',
+  columnChars: '│┃┊┋!I1iT|', // Characters for column effect
+  paperChars: '#@*o+=-.░▒▓█▓▒░', // Characters for paper effect
   
   // Character encoding ranges for Unicode patterns
   unicodeRanges: [
@@ -53,11 +55,16 @@ let transitionAlpha = 0;
 let transitionProgress = 0;
 let isTransitioning = false;
 let symbolMap = {};  // Maps coordinates to specific characters
+let whiteMode = false; // White background mode
 
 // Pattern state and settings
 let wallpaperGroup = "p6m";
 let baseRotation = 0;
-let patternType = "wallpaper"; // Options: "wallpaper", "glass", "flower"
+let patternType = "wallpaper"; // Options: "wallpaper", "glass", "flower", "columns", "paper"
+let params = {
+  columnDensity: 0.8,
+  paperHoleSize: 0.4
+};
 
 /**
  * Initialize the renderer
@@ -282,6 +289,30 @@ function setWallpaperGroup(group) {
 }
 
 /**
+ * Set white mode
+ */
+function setWhiteMode(mode) {
+  whiteMode = mode;
+  // Update color configuration
+  if (whiteMode) {
+    config.backgroundColor = '#fff';
+    config.textColor = '#111';
+    config.highlightColor = '#990';
+  } else {
+    config.backgroundColor = '#111';
+    config.textColor = '#ddd';
+    config.highlightColor = '#ff5';
+  }
+}
+
+/**
+ * Set additional parameters
+ */
+function setParams(newParams) {
+  params = {...params, ...newParams};
+}
+
+/**
  * Main render loop
  */
 function render(timestamp) {
@@ -332,6 +363,12 @@ function render(timestamp) {
         renderPoem();
       }
       break;
+    case "columns":
+      renderColumns();
+      break;
+    case "paper":
+      renderPaper();
+      break;
     default:
       // Default rendering
       renderGrid();
@@ -340,6 +377,159 @@ function render(timestamp) {
   
   // Continue animation
   requestAnimationFrame(render);
+}
+
+/**
+ * Render columnar pattern based on letter frequency
+ * This creates a visualization similar to the right side of the image
+ */
+function renderColumns() {
+  if (!canvas || !ctx || !currentPoem || currentPoem.length === 0) return;
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = config.backgroundColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Get all text from the poem
+  const text = currentPoem.join(' ');
+  
+  // Analyze character frequencies
+  const charFreq = {};
+  for (let char of text) {
+    if (!charFreq[char]) charFreq[char] = 0;
+    charFreq[char]++;
+  }
+  
+  // Create normalized frequencies
+  const charKeys = Object.keys(charFreq);
+  const maxFreq = Math.max(...Object.values(charFreq));
+  
+  // Create columns
+  const colWidth = Math.ceil(canvas.width / 100);
+  let colX = 0;
+  
+  // Draw a grid of columns with varying density
+  for (let i = 0; i < 100; i++) {
+    const x = colX;
+    colX += colWidth;
+    
+    // Vary the column height and density based on character frequency
+    const charIndex = i % charKeys.length;
+    const char = charKeys[charIndex];
+    const freq = charFreq[char] / maxFreq;
+    
+    // Draw a column of characters
+    const colHeight = canvas.height;
+    const charCount = Math.ceil(colHeight / 12);
+    
+    for (let j = 0; j < charCount; j++) {
+      const y = j * 12;
+      
+      // Randomly decide to draw a character based on density
+      if (Math.random() < freq * params.columnDensity) {
+        // Pick a character - use column chars or the actual character
+        const useChar = Math.random() < 0.7 ? 
+          config.columnChars[Math.floor(Math.random() * config.columnChars.length)] : 
+          char;
+        
+        ctx.fillStyle = config.textColor;
+        ctx.font = '10px monospace';
+        ctx.fillText(useChar, x, y);
+      }
+    }
+  }
+  
+  // Highlight poem lines with yellow backgrounds and bold text
+  for (let i = 0; i < currentPoem.length; i++) {
+    const line = currentPoem[i];
+    const yPosition = canvas.height * 0.3 + i * 30;
+    const randomXOffset = Math.random() * canvas.width * 0.2;
+    
+    // Draw highlighted background
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+    const metrics = ctx.measureText(line);
+    const lineWidth = metrics.width;
+    ctx.fillRect(
+      randomXOffset, 
+      yPosition - 12, 
+      lineWidth + 10, 
+      16
+    );
+    
+    // Draw text
+    ctx.fillStyle = config.highlightColor;
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(line, randomXOffset + 5, yPosition);
+  }
+}
+
+/**
+ * Render paper-like pattern with flower hole
+ * This creates a visualization similar to the left side of the image
+ */
+function renderPaper() {
+  if (!canvas || !ctx) return;
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = config.backgroundColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Center of the canvas
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  // Flower hole parameters
+  const maxRadius = Math.min(canvas.width, canvas.height) * 0.4;
+  const holeRadius = maxRadius * params.paperHoleSize;
+  
+  // Create dense text pattern across the entire canvas
+  const cellSize = 10;
+  const cols = Math.ceil(canvas.width / cellSize);
+  const rows = Math.ceil(canvas.height / cellSize);
+  
+  ctx.font = '10px monospace';
+  ctx.fillStyle = config.textColor;
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const posX = x * cellSize;
+      const posY = y * cellSize;
+      
+      // Calculate distance from center
+      const dx = posX - centerX;
+      const dy = posY - centerY;
+      const distance = Math.sqrt(dx*dx + dy*dy);
+      
+      // Calculate angle for flower petal effect
+      const angle = Math.atan2(dy, dx);
+      const petalCount = 6; // 6-petal flower
+      const petalEffect = 0.2 * Math.sin(petalCount * angle) + 1;
+      const adjustedHoleRadius = holeRadius * petalEffect;
+      
+      // Draw character if outside the flower hole
+      if (distance > adjustedHoleRadius) {
+        // Use # character for white mode (like in the image)
+        const char = whiteMode ? '#' : '█';
+        ctx.fillText(char, posX, posY);
+      }
+    }
+  }
+  
+  // Draw the poem in the center of the flower hole
+  if (currentPoem && currentPoem.length > 0) {
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = config.textColor;
+    ctx.textAlign = 'center';
+    
+    // Draw each line of the poem
+    for (let i = 0; i < currentPoem.length; i++) {
+      const yOffset = (i - currentPoem.length/2) * 20;
+      ctx.fillText(currentPoem[i], centerX, centerY + yOffset);
+    }
+    
+    // Reset text alignment
+    ctx.textAlign = 'start';
+  }
 }
 
 /**
@@ -365,7 +555,9 @@ function renderGrid() {
       
       if (symbol) {
         // Render special symbol
-        ctx.fillStyle = `rgba(255, 255, 255, ${symbol.alpha})`;
+        ctx.fillStyle = whiteMode ? 
+          `rgba(0, 0, 0, ${symbol.alpha})` : 
+          `rgba(255, 255, 255, ${symbol.alpha})`;
         ctx.font = `${symbol.size}px monospace`;
         ctx.fillText(
           symbol.char,
@@ -374,7 +566,9 @@ function renderGrid() {
         );
       } else {
         // Render regular grid character
-        ctx.fillStyle = `rgba(200, 200, 200, ${cell.alpha})`;
+        ctx.fillStyle = whiteMode ? 
+          `rgba(0, 0, 0, ${cell.alpha})` : 
+          `rgba(200, 200, 200, ${cell.alpha})`;
         ctx.font = `${cell.size}px monospace`;
         ctx.fillText(
           cell.char,
@@ -435,14 +629,16 @@ function renderPoemLine(line, x, y, alpha) {
   ctx.font = `bold ${poemFontSize}px monospace`;
   
   // Background shadow/glow for better readability
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+  ctx.shadowColor = whiteMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
   ctx.shadowBlur = 5;
   
   // Calculate line width for highlight effect
   const lineWidth = ctx.measureText(line).width;
   
   // Draw highlight behind text
-  ctx.fillStyle = `rgba(20, 20, 20, ${0.7 * alpha})`;
+  ctx.fillStyle = whiteMode ? 
+    `rgba(240, 240, 240, ${0.7 * alpha})` : 
+    `rgba(20, 20, 20, ${0.7 * alpha})`;
   ctx.fillRect(
     x - lineWidth/2 - 10,
     y - poemFontSize/2 - 5,
@@ -463,9 +659,11 @@ function renderPoemLine(line, x, y, alpha) {
     const isKeyWord = keyWords.some(key => word.toLowerCase().includes(key));
     
     if (isKeyWord) {
-      ctx.fillStyle = `rgba(255, 255, 80, ${alpha})`;
+      ctx.fillStyle = `rgba(${whiteMode ? '153, 153, 0' : '255, 255, 80'}, ${alpha})`;
     } else {
-      ctx.fillStyle = `rgba(220, 220, 220, ${alpha})`;
+      ctx.fillStyle = whiteMode ? 
+        `rgba(0, 0, 0, ${alpha})` :
+        `rgba(220, 220, 220, ${alpha})`;
     }
     
     ctx.textAlign = 'left';
@@ -559,6 +757,8 @@ window.SimpleRenderer = {
   setPoem,
   setPatternType,
   setWallpaperGroup,
+  setWhiteMode,
+  setParams,
   transitionToNextPoem,
   createAsciiArt
 };
