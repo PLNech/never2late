@@ -10,7 +10,7 @@ const state = {
   seedWord: "flower", // Default seed word
   patternType: "wallpaper", // Options: "wallpaper", "glass", "flower"
   wallpaperGroup: "p6m", // Default wallpaper symmetry group
-  animationSpeed: 0.5,
+  animationSpeed: 0.15,
   colorScheme: { bg: "#333", fg: "#ddd" },
   fontSize: 16,
   unicodeRange: [0x2500, 0x25FF], // Default to box drawing characters
@@ -161,7 +161,6 @@ function updateDisplay() {
 }
 
 function startAnimation() {
-  // Main animation loop
   function animate() {
     const currentTime = performance.now();
     
@@ -174,7 +173,11 @@ function startAnimation() {
     // Update and render each animation
     for (let i = 0; i < animations.length; i++) {
       const anim = animations[i];
-      anim.offset += anim.speed;
+      
+      if (state.animationSpeed > 0) {
+        // Original speed serves as a base rate multiplier
+        anim.offset += anim.speed * state.animationSpeed;
+      }
       
       // Clear the canvas
       anim.context.clearRect(0, 0, anim.canvas.width, anim.canvas.height);
@@ -198,24 +201,31 @@ function startAnimation() {
 }
 
 function drawPatternWithPoem(canvasId, group, poemLines, offset) {
-  // This would call an adapted version of the drawPattern function from wallpaper.js
-  // but with poem lines integrated
-  console.log(`Drawing pattern ${group} with poem on ${canvasId} at offset ${offset}`);
+  // UNCOMMENT FOR DEBUGGING 
+  // console.log(`Drawing pattern ${group} with poem on ${canvasId} at offset ${offset}`);
   
-  // Call the modified function from the pattern-renderer.js module
-  window.drawPatternWithPoem(canvasId, group, poemLines, offset);
+  if (window.patternRenderer && typeof window.patternRenderer.renderPattern === 'function') {
+    window.patternRenderer.renderPattern(canvasId, group, poemLines, offset);
+  } else {
+    console.error("Pattern renderer not initialized properly");
+  }
 }
 
 function drawGlassWithPoem(canvasId, poemLines, offset) {
-  // Call the modified glass pattern renderer
-  window.drawGlassWithPoem(canvasId, poemLines, offset);
+  if (window.patternRenderer && typeof window.patternRenderer.renderGlass === 'function') {
+    window.patternRenderer.renderGlass(canvasId, poemLines, offset);
+  } else {
+    console.error("Pattern renderer not initialized properly");
+  }
 }
 
-function drawFlowerWithPoem(canvasId, poemLines, offset) {
-  // Call the modified flower pattern renderer
-  window.drawFlowerWithPoem(canvasId, poemLines, offset);
+function drawFlowerWithPoem(canvasId, poemLines, offset) {  
+  if (window.patternRenderer && typeof window.patternRenderer.renderFlower === 'function') {
+    window.patternRenderer.renderFlower(canvasId, poemLines, offset);
+  } else {
+    console.error("Pattern renderer not initialized properly");
+  }
 }
-
 function setupEventListeners() {
   // Window resize handler
   window.addEventListener('resize', () => {

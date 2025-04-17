@@ -1,7 +1,9 @@
 /**
  * i've never picked a protected flower - Interactive Installation
- * Poem generation module using ConceptNet
+ * Updated poem generation module using local NLP instead of ConceptNet
  */
+
+const nlp = window.nlp | {};
 
 // Collection of seed words to use when we get stuck
 const seedWordset = [
@@ -107,53 +109,11 @@ function getSentenceWithKeyword(keyword) {
   return selectedSentence;
 }
 
-// Fetch related terms from ConceptNet API
-async function fetchRelatedTerms(term, limit = 10) {
-  try {
-    const url = `https://api.conceptnet.io/c/en/${encodeURIComponent(term)}?filter=/c/en&limit=${limit}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Extract related terms
-    const relatedTerms = [];
-    
-    // Process edges to extract related terms
-    if (data.edges && data.edges.length > 0) {
-      data.edges.forEach(edge => {
-        // Extract the term from the start node if it's in English
-        if (edge.start && edge.start.language === 'en') {
-          const term = edge.start.term.replace('/c/en/', '');
-          relatedTerms.push(term);
-        }
-        
-        // Extract the term from the end node if it's in English
-        if (edge.end && edge.end.language === 'en') {
-          const term = edge.end.term.replace('/c/en/', '');
-          relatedTerms.push(term);
-        }
-      });
-    }
-    
-    // Remove duplicates and the original term
-    return [...new Set(relatedTerms)]
-      .filter(t => t !== term)
-      .map(t => t.replace(/_/g, ' ')); // Replace underscores with spaces
-  } catch (error) {
-    console.error("Error fetching related terms:", error);
-    return [];
-  }
-}
-
 // Generate a poem based on a seed word
 async function generatePoem(seedWord, lineCount = 8) {
   try {
-    // Get related terms from ConceptNet
-    const relatedTerms = await fetchRelatedTerms(seedWord, 20);
+    // Get related terms using local NLP instead of ConceptNet
+    const relatedTerms = await nlp.findRelatedTerms(seedWord, 20);
     
     // If we couldn't get related terms, use our backup wordset
     const termsToUse = relatedTerms.length > 0 ? 
@@ -209,13 +169,12 @@ async function generatePoem(seedWord, lineCount = 8) {
 // Load the sentence database from a file
 async function loadSentenceDatabase(filePath) {
   try {
-    const response = await fetch(filePath);
-    if (!response.ok) {
-      throw new Error(`Failed to load database: ${response.status} ${response.statusText}`);
-    }
+    const fs = require('fs');
+    const util = require('util');
+    const readFile = util.promisify(fs.readFile);
     
-    const text = await response.text();
-    const sentences = text
+    const data = await readFile(filePath, 'utf8');
+    const sentences = data
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0);
@@ -228,49 +187,11 @@ async function loadSentenceDatabase(filePath) {
   }
 }
 
-// Fetch a word relationship path from one term to another
-async function fetchWordPath(startTerm, endTerm, maxLength = 5) {
-  const visited = new Set();
-  const queue = [{ term: startTerm, path: [startTerm] }];
-  
-  while (queue.length > 0) {
-    const { term, path } = queue.shift();
-    
-    if (path.length > maxLength) {
-      continue; // Path too long, skip
-    }
-    
-    if (term === endTerm) {
-      return path; // Found a path
-    }
-    
-    if (visited.has(term)) {
-      continue; // Already visited
-    }
-    
-    visited.add(term);
-    
-    // Get related terms
-    const relatedTerms = await fetchRelatedTerms(term, 10);
-    
-    for (const relatedTerm of relatedTerms) {
-      if (!visited.has(relatedTerm)) {
-        queue.push({
-          term: relatedTerm,
-          path: [...path, relatedTerm]
-        });
-      }
-    }
-  }
-  
-  return null; // No path found
-}
-
 // Generate a poem that transitions between two concepts
 async function generateTransitionPoem(startTerm, endTerm, lineCount = 10) {
   try {
     // Try to find a path between the terms
-    const path = await fetchWordPath(startTerm, endTerm);
+    const path = await nlp.findWordPath(startTerm, endTerm);
     
     if (!path) {
       // If no path found, just generate a regular poem
@@ -294,7 +215,7 @@ async function generateTransitionPoem(startTerm, endTerm, lineCount = 10) {
     
     // If we don't have enough lines, add more related to the end term
     if (poem.length < lineCount) {
-      const relatedToEnd = await fetchRelatedTerms(endTerm, 10);
+      const relatedToEnd = await nlp.findRelatedTerms(endTerm, 10);
       
       for (const term of relatedToEnd) {
         if (poem.length >= lineCount) {
@@ -325,12 +246,23 @@ async function generateTransitionPoem(startTerm, endTerm, lineCount = 10) {
   }
 }
 
-// Export functions
-window.PoemGenerator = {
+// Generate a poem directly from our local NLP module
+async function generateNlpPoem(seedWord, lineCount = 8) {
+  try {
+    return await nlp.findRelatedPoems(seedWord, sentenceDatabase, lineCount);
+  } catch (error) {
+    console.error("Error generating NLP poem:", error);
+    return generatePoem(seedWord, lineCount);
+  }
+}
+
+// Export functions for Node.js environment
+module.exports = {
   initialize: initializeDatabase,
   generatePoem,
   generateTransitionPoem,
-  fetchRelatedTerms,
+  generateNlpPoem,
+  findRelatedTerms: nlp.findRelatedTerms,
   loadSentenceDatabase,
   getSeedWords: () => [...seedWordset] // Return a copy of the seed words
 };

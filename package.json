@@ -1,20 +1,37 @@
 {
-  "name": "flower-poem-installation",
+  "name": "protected-flower",
   "version": "1.0.0",
-  "description": "Interactive flower poem installation for a themed party",
-  "main": "serial-bridge.js",
+  "description": "Interactive poem installation based on never picked a protected flower",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node serial-bridge.js",
-    "basic": "npx http-server public"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "webpack --mode production"
   },
+  "keywords": [
+    "poetry",
+    "generative",
+    "art",
+    "installation",
+    "flower",
+    "ascii"
+  ],
+  "author": "PLNech",
+  "license": "Gnu GPL v3",
   "dependencies": {
-    "express": "^4.18.2",
-    "serialport": "^10.5.0",
-    "@serialport/parser-readline": "^10.5.0",
-    "ws": "^8.13.0"
+    "canvas": "^2.11.2",
+    "express": "^4.21.2",
+    "midi": "^2.0.0",
+    "natural": "^6.12.0",
+    "socket.io": "^4.8.1",
+    "three": "^0.159.0",
+    "webmidi": "^3.1.7",
+    "wordnet-db": "^3.1.14"
   },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "nodemon": "^3.0.1",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
   },
   "engines": {
     "node": ">=14.0.0"

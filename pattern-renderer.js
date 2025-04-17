@@ -804,7 +804,10 @@ function createAsciiOverlay(canvas, context, poemLines) {
 }
 
 // Expose the drawing functions globally
-window.drawPatternWithPoem = drawPatternWithPoem;
-window.drawGlassWithPoem = drawGlassWithPoem;
-window.drawFlowerWithPoem = drawFlowerWithPoem;
-window.groupNameString = groupNameString; // Make group names available globally
+
+window.patternRenderer = {
+  renderPattern: drawPatternWithPoem,
+  renderGlass: drawGlassWithPoem,
+  renderFlower: drawFlowerWithPoem,
+  groupNameString: groupNameString
+};
