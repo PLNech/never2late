@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>i've never picked a protected flower - Interactive Installation</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      color: #ddd;
+      font-family: monospace;
+      overflow: hidden;
+    }
+    
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    
+    .poem-canvas {
+      display: block;
+      width: 100%;
+    }
+    
+    #control-panel {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      width: 300px;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 1000;
+      transition: opacity 0.3s ease;
+    }
+    
+    #control-panel.collapsed {
+      opacity: 0.1;
+    }
+    
+    #control-panel:hover {
+      opacity: 1;
+    }
+    
+    .control-group {
+      margin-bottom: 10px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    select, input[type="range"], button {
+      width: 100%;
+      padding: 5px;
+      margin-bottom: 10px;
+      background-color: #333;
+      color: #ddd;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+    
+    button {
+      cursor: pointer;
+      padding: 8px;
+      background-color: #555;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #777;
+    }
+    
+    #current-seed {
+      font-style: italic;
+    }
+    
+    #parameter-display {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 16px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    #parameter-display.visible {
+      opacity: 1;
+    }
+    
+    #shortcuts-panel {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 1000;
+      max-width: 300px;
+    }
+    
+    #shortcuts-panel h4 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .key {
+      background-color: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-right: 8px;
+    }
+    
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #111;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      transition: opacity 1s ease;
+    }
+    
+    #loading-screen h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    #loading-bar {
+      width: 50%;
+      height: 5px;
+      background-color: #333;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    
+    #loading-progress {
+      height: 100%;
+      width: 0%;
+      background-color: #ddd;
+      transition: width 0.3s ease;
+    }
+    
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-screen">
+    <h1>i've never picked a protected flower</h1>
+    <div id="loading-bar">
+      <div id="loading-progress"></div>
+    </div>
+    <p>Loading resources...</p>
+  </div>
+  
+  <div id="canvas-container"></div>
+  
+  <div id="parameter-display"></div>
+  
+  <div id="shortcuts-panel">
+    <h4>Keyboard Shortcuts</h4>
+    <div class="shortcut">
+      <span class="key">Space</span>
+      <span>Generate new poem</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">↑/↓</span>
+      <span>Adjust animation speed</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">←/→</span>
+      <span>Change pattern type</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">W/S</span>
+      <span>Change wallpaper group</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">A/D</span>
+      <span>Adjust refresh interval</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">Q/E</span>
+      <span>Change canvas count</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">Z/C</span>
+      <span>Adjust font size</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">R</span>
+      <span>Randomize all parameters</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">T</span>
+      <span>Toggle auto transition</span>
+    </div>
+    <div class="shortcut">
+      <span class="key">F</span>
+      <span>Toggle fullscreen</span>
+    </div>
+  </div>
+
+  <!-- Load our modules -->
+  <script src="pattern-renderer.js"></script>
+  <script src="poem-generator.js"></script>
+  <script src="input-controllers.js"></script>
+  <script src="main.js"></script>
+  
+  <script>
+    // Simulate loading progress
+    document.addEventListener('DOMContentLoaded', () => {
+      const loadingProgress = document.getElementById('loading-progress');
+      const loadingScreen = document.getElementById('loading-screen');
+      
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 5;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          
+          // Hide loading screen after a short delay
+          setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+          }, 500);
+        }
+        loadingProgress.style.width = `${progress}%`;
+      }, 100);
+      
+      // Display parameter changes
+      window.addEventListener('parameterChanged', (event) => {
+        const { parameter, value } = event.detail;
+        
+        const paramDisplay = document.getElementById('parameter-display');
+        paramDisplay.textContent = `${parameter}: ${value}`;
+        paramDisplay.classList.add('visible');
+        
+        // Hide the display after a few seconds
+        setTimeout(() => {
+          paramDisplay.classList.remove('visible');
+        }, 3000);
+      });
+      
+      // Toggle control panel collapse on click
+      document.getElementById('control-panel')?.addEventListener('dblclick', (event) => {
+        if (event.target === event.currentTarget) {
+          event.currentTarget.classList.toggle('collapsed');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
