@@ -1,0 +1,22 @@
+{
+  "name": "flower-poem-installation",
+  "version": "1.0.0",
+  "description": "Interactive flower poem installation for a themed party",
+  "main": "serial-bridge.js",
+  "scripts": {
+    "start": "node serial-bridge.js",
+    "basic": "npx http-server public"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "serialport": "^10.5.0",
+    "@serialport/parser-readline": "^10.5.0",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
