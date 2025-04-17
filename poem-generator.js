@@ -1,25 +1,22 @@
 /**
- * i've never picked a protected flower - Interactive Installation
- * Updated poem generation module using local NLP instead of ConceptNet
+ * Minimal poem generator for the flower installation
+ * Simplified from the original but maintains the spirit
  */
 
-const nlp = window.nlp | {};
+// Basic word associations for offline use
+const wordAssociations = {
+  flower: ['petal', 'bloom', 'garden', 'blossom', 'lotus', 'rose', 'tulip', 'orchid'],
+  petal: ['flower', 'fragile', 'soft', 'fall', 'delicate', 'color', 'unfold'],
+  bloom: ['flower', 'open', 'spring', 'growth', 'bud', 'unfold', 'blossom'],
+  garden: ['flower', 'grow', 'plant', 'soil', 'seed', 'tend', 'cultivate'],
+  nature: ['wild', 'growth', 'natural', 'earth', 'organic', 'forest', 'field'],
+  light: ['sun', 'shine', 'glow', 'bright', 'dawn', 'illuminate', 'shadow'],
+  water: ['river', 'rain', 'dew', 'droplet', 'mist', 'stream', 'pool'],
+  time: ['season', 'moment', 'cycle', 'eternal', 'ephemeral', 'fleeting', 'memory']
+};
 
-// Collection of seed words to use when we get stuck
-const seedWordset = [
-  "flower", "bloom", "petal", "garden", "blossom", "stem", "leaf", "nature",
-  "growth", "beauty", "fragrance", "color", "sunlight", "seed", "root",
-  "meadow", "rose", "lotus", "orchid", "tulip", "lily", "daisy", "bouquet",
-  "water", "soil", "wind", "rain", "summer", "spring", "light", "shadow",
-  "landscape", "field", "earth", "sky", "sun", "moon", "cloud", "river",
-  "ocean", "mountain", "valley", "forest", "tree", "branch", "bird", "butterfly",
-  "insect", "bee", "harmony", "peace", "tranquility", "meditation", "breath",
-  "life", "death", "renewal", "cycle", "season", "scent", "aroma", "warmth",
-  "coolness", "morning", "evening", "dew", "rain", "storm", "calm", "wild"
-];
-
-// Sample database of sentences (in production this would be loaded from a file)
-let sentenceDatabase = [
+// Database of flower-themed sentences
+const sentenceDatabase = [
   "i've never picked a protected flower",
   "the garden blooms in unexpected colors",
   "petals fall silently to the ground",
@@ -28,8 +25,6 @@ let sentenceDatabase = [
   "wildflowers dance in the summer breeze",
   "the lotus rises from murky waters",
   "spring brings new blossoms to bare branches",
-  "the garden keeper tends each bloom with care",
-  "sunlight filters through translucent petals",
   "morning dew glistens on flower buds",
   "bees buzz from flower to flower",
   "the orchid opens slowly over days",
@@ -45,11 +40,6 @@ let sentenceDatabase = [
   "a butterfly rests on a bright petal",
   "the gardener's hands are stained with soil",
   "flowers turn to follow the sun's path",
-  "a bouquet of fresh-cut flowers brightens the room",
-  "flower markets burst with vibrant colors",
-  "hummingbirds hover near bright blossoms",
-  "frost etches patterns on the last autumn flowers",
-  "seeds germinate in warm spring soil",
   "each flower carries its own story",
   "a flower can break through stone",
   "gardens reveal the passage of time",
@@ -58,10 +48,8 @@ let sentenceDatabase = [
   "the language of flowers speaks in silence",
   "each garden reflects its keeper's soul",
   "fallen petals make a soft carpet",
-  "the greenhouse protects exotic blooms",
   "flower fields stretch to the horizon",
   "pressed flowers between book pages",
-  "flower essences capture ephemeral scents",
   "the winter garden sleeps beneath snow",
   "flowers teach us about impermanence",
   "a windowsill garden greets the morning sun",
@@ -72,197 +60,104 @@ let sentenceDatabase = [
   "a flower's life is brief but beautiful"
 ];
 
-// Keep track of used sentences to avoid repetition
-let usedSentences = new Set();
+// Set to track used sentences
+const usedSentences = new Set();
 
-// Initialize the module
-function initializeDatabase(sentences) {
-  if (sentences && sentences.length > 0) {
-    sentenceDatabase = sentences;
-  }
-  usedSentences.clear();
-}
-
-// Get a random sentence containing the keyword
-function getSentenceWithKeyword(keyword) {
-  // Create a filtered list of sentences containing the keyword
-  const matchingSentences = sentenceDatabase.filter(sentence => 
-    sentence.toLowerCase().includes(keyword.toLowerCase()) && 
-    !usedSentences.has(sentence)
-  );
+/**
+ * Find related words for a seed word
+ * @param {string} word - The seed word
+ * @param {number} count - Number of related words to return
+ * @returns {string[]} Related words
+ */
+function findRelatedWords(word, count = 5) {
+  word = word.toLowerCase();
   
-  if (matchingSentences.length === 0) {
-    // If no unused sentences match, we can either:
-    // 1. Reset used sentences tracking
-    if (usedSentences.size > sentenceDatabase.length / 2) {
-      usedSentences.clear();
-      return getSentenceWithKeyword(keyword);
+  // Direct associations from our database
+  let related = wordAssociations[word] || [];
+  
+  // If we don't have direct associations, look for the word in values
+  if (related.length === 0) {
+    for (const [key, values] of Object.entries(wordAssociations)) {
+      if (values.includes(word)) {
+        related.push(key);
+        // Add some values from this key
+        related = related.concat(values.filter(v => v !== word).slice(0, 3));
+      }
     }
-    // 2. Or return null to indicate no matches
-    return null;
   }
   
-  // Get a random matching sentence
-  const selectedSentence = matchingSentences[Math.floor(Math.random() * matchingSentences.length)];
-  usedSentences.add(selectedSentence);
+  // If still no results, use default nature/flower words
+  if (related.length === 0) {
+    related = ['flower', 'nature', 'garden', 'bloom', 'petal'];
+  }
   
-  return selectedSentence;
+  // Deduplicate and take requested count
+  return [...new Set(related)].slice(0, count);
 }
 
-// Generate a poem based on a seed word
-async function generatePoem(seedWord, lineCount = 8) {
-  try {
-    // Get related terms using local NLP instead of ConceptNet
-    const relatedTerms = await nlp.findRelatedTerms(seedWord, 20);
-    
-    // If we couldn't get related terms, use our backup wordset
-    const termsToUse = relatedTerms.length > 0 ? 
-      relatedTerms : 
-      seedWordset.filter(word => word !== seedWord);
-    
-    // Start with the seed word
-    const allTerms = [seedWord, ...termsToUse];
-    
-    // Generate poem by finding sentences for each term
-    const poem = [];
-    let attemptCount = 0;
-    
-    // Keep trying terms until we have enough lines or run out of attempts
-    while (poem.length < lineCount && attemptCount < allTerms.length * 2) {
-      const currentTerm = allTerms[attemptCount % allTerms.length];
-      const sentence = getSentenceWithKeyword(currentTerm);
-      
-      if (sentence && !poem.includes(sentence)) {
-        poem.push(sentence);
-      }
-      
-      attemptCount++;
-    }
-    
-    // If we don't have enough lines, fill in with random sentences
-    while (poem.length < lineCount) {
-      const randomIndex = Math.floor(Math.random() * sentenceDatabase.length);
-      const randomSentence = sentenceDatabase[randomIndex];
-      
-      if (!poem.includes(randomSentence)) {
-        poem.push(randomSentence);
-      }
-    }
-    
-    return poem;
-  } catch (error) {
-    console.error("Error generating poem:", error);
-    // Return a fallback poem if there's an error
-    return [
-      `a ${seedWord} stands alone`,
-      "light catches its edges",
-      "seasons change but it remains",
-      "the wind carries its essence",
-      "time flows around it",
-      "in silence it speaks volumes",
-      "memory holds its image",
-      "beauty in simplicity"
-    ];
+/**
+ * Generate a poem based on a seed word
+ * @param {string} seedWord - The word to center the poem around
+ * @param {number} lineCount - Number of lines in the poem
+ * @returns {string[]} The generated poem
+ */
+function generatePoem(seedWord, lineCount = 5) {
+  // Reset used sentences if we've used more than half
+  if (usedSentences.size > sentenceDatabase.length / 2) {
+    usedSentences.clear();
   }
-}
-
-// Load the sentence database from a file
-async function loadSentenceDatabase(filePath) {
-  try {
-    const fs = require('fs');
-    const util = require('util');
-    const readFile = util.promisify(fs.readFile);
+  
+  // Find related words to our seed
+  const relatedWords = findRelatedWords(seedWord, 8);
+  const allWords = [seedWord, ...relatedWords];
+  
+  // Generate poem by finding sentences for each term
+  const poem = [];
+  
+  // Try each word until we have enough lines
+  for (const word of allWords) {
+    // Skip if we have enough lines
+    if (poem.length >= lineCount) break;
     
-    const data = await readFile(filePath, 'utf8');
-    const sentences = data
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+    // Find sentences containing this word
+    const matchingSentences = sentenceDatabase.filter(sentence => 
+      sentence.toLowerCase().includes(word.toLowerCase()) && 
+      !usedSentences.has(sentence)
+    );
     
-    initializeDatabase(sentences);
-    return sentences;
-  } catch (error) {
-    console.error("Error loading sentence database:", error);
-    return null;
+    // Add a random matching sentence
+    if (matchingSentences.length > 0) {
+      const selectedSentence = matchingSentences[Math.floor(Math.random() * matchingSentences.length)];
+      poem.push(selectedSentence);
+      usedSentences.add(selectedSentence);
+    }
   }
-}
-
-// Generate a poem that transitions between two concepts
-async function generateTransitionPoem(startTerm, endTerm, lineCount = 10) {
-  try {
-    // Try to find a path between the terms
-    const path = await nlp.findWordPath(startTerm, endTerm);
+  
+  // If we still don't have enough lines, add random unused sentences
+  while (poem.length < lineCount) {
+    const unusedSentences = sentenceDatabase.filter(sentence => !usedSentences.has(sentence));
     
-    if (!path) {
-      // If no path found, just generate a regular poem
-      return generatePoem(startTerm, lineCount);
+    if (unusedSentences.length === 0) {
+      // If all sentences used, just pick any
+      const randomSentence = sentenceDatabase[Math.floor(Math.random() * sentenceDatabase.length)];
+      poem.push(randomSentence);
+    } else {
+      // Otherwise pick an unused one
+      const randomSentence = unusedSentences[Math.floor(Math.random() * unusedSentences.length)];
+      poem.push(randomSentence);
+      usedSentences.add(randomSentence);
     }
-    
-    // Generate a poem following the path
-    const poem = [];
-    
-    for (const term of path) {
-      const sentence = getSentenceWithKeyword(term);
-      if (sentence) {
-        poem.push(sentence);
-      }
-      
-      // If we have enough lines, stop
-      if (poem.length >= lineCount) {
-        break;
-      }
-    }
-    
-    // If we don't have enough lines, add more related to the end term
-    if (poem.length < lineCount) {
-      const relatedToEnd = await nlp.findRelatedTerms(endTerm, 10);
-      
-      for (const term of relatedToEnd) {
-        if (poem.length >= lineCount) {
-          break;
-        }
-        
-        const sentence = getSentenceWithKeyword(term);
-        if (sentence && !poem.includes(sentence)) {
-          poem.push(sentence);
-        }
-      }
-    }
-    
-    // If still not enough, fill with random sentences
-    while (poem.length < lineCount) {
-      const randomIndex = Math.floor(Math.random() * sentenceDatabase.length);
-      const randomSentence = sentenceDatabase[randomIndex];
-      
-      if (!poem.includes(randomSentence)) {
-        poem.push(randomSentence);
-      }
-    }
-    
-    return poem;
-  } catch (error) {
-    console.error("Error generating transition poem:", error);
-    return generatePoem(startTerm, lineCount);
   }
+  
+  return poem;
 }
 
-// Generate a poem directly from our local NLP module
-async function generateNlpPoem(seedWord, lineCount = 8) {
-  try {
-    return await nlp.findRelatedPoems(seedWord, sentenceDatabase, lineCount);
-  } catch (error) {
-    console.error("Error generating NLP poem:", error);
-    return generatePoem(seedWord, lineCount);
-  }
-}
-
-// Export functions for Node.js environment
-module.exports = {
-  initialize: initializeDatabase,
+// Make functions available globally
+window.PoemGenerator = {
   generatePoem,
-  generateTransitionPoem,
-  generateNlpPoem,
-  findRelatedTerms: nlp.findRelatedTerms,
-  loadSentenceDatabase,
-  getSeedWords: () => [...seedWordset] // Return a copy of the seed words
+  findRelatedWords,
+  getRandomSeedWord: () => {
+    const seeds = Object.keys(wordAssociations);
+    return seeds[Math.floor(Math.random() * seeds.length)];
+  }
 };
