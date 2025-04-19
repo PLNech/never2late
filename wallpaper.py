@@ -567,7 +567,7 @@ class WallpaperPattern:
                         if 0 <= canvas_x < self.width and 0 <= canvas_y < self.height:
                             self.canvas[canvas_y][canvas_x] = glyph
 
-    def embed_poem(self, poem_lines: List[str]) -> None:
+    def embed_poem(self, poem_lines: List[str], no_markup: bool = False) -> None:
         """Embed a poem into the pattern"""
         if not poem_lines:
             return
@@ -601,7 +601,8 @@ class WallpaperPattern:
             # Highlight some parts of the poem with yellow color
             # In terminal mode this will be normal text
             # In HTML mode this will be styled as yellow highlights
-            line = f'<poem>{line}</poem>'
+            if not no_markup:
+                line = f'<poem>{line}</poem>'
 
             # Embed the text
             for x in range(self.width):
@@ -611,7 +612,7 @@ class WallpaperPattern:
                 if char_index < len(line):
                     self.canvas[y][x] = line[char_index]
 
-    def generate_pattern(self, poem_lines: Optional[List[str]] = None) -> None:
+    def generate_pattern(self, poem_lines: Optional[List[str]] = None, no_markup: bool = False) -> None:
         """Generate a complete pattern, optionally embedding a poem"""
         self.draw_pattern()
 
@@ -626,7 +627,7 @@ class WallpaperPattern:
                         selected_poem_lines.append(line)
 
             if selected_poem_lines:
-                self.embed_poem(selected_poem_lines)
+                self.embed_poem(selected_poem_lines, no_markup)
 
     def to_text(self) -> str:
         """Convert the pattern to a text string"""
@@ -917,7 +918,7 @@ def main():
             print(f"Error loading poem: {e}")
 
     # Generate the pattern
-    pattern.generate_pattern(poem_lines)
+    pattern.generate_pattern(poem_lines, no_markup=True)
 
     # Run as web server if port is specified
     if args.port:
@@ -966,7 +967,7 @@ def main():
 
                 # Generate a new pattern
                 pattern.set_random_group()
-                pattern.generate_pattern(poem_lines)
+                pattern.generate_pattern(poem_lines, no_markup=True)
 
                 # Print the pattern
                 if args.chaos:
