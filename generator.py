@@ -45,10 +45,37 @@ WORD_SET = [
     "fire", "breeze", "ice", "sea", "garden", "sky", "bird", "sunset", "dam", "river", "wash",
     "ocean", "hill", "valley", "tree", "flower", "flame", "fire", "tree"
 ]
+WORD_SET += [
+    # Death, grief, remembrance
+    "grave", "coffin", "mourning", "ashes", "sepulcher", "tomb", "funeral", "farewell",
+    "loss", "lament", "dirge", "obituary", "requiem", "epitaph", "wake", "veil", "sorrow",
+    "keening", "grief", "shroud", "wither", "transience",
+
+    # Contemplation, meaning, wisdom
+    "stillness", "echo", "memory", "legacy", "thought", "reflection", "wisdom", "insight",
+    "truth", "silence", "reverie", "meditation", "presence", "absence", "eternity", "paradox",
+    "soul", "mind", "spirit", "understanding", "acceptance", "seeking",
+
+    # Beauty, time, seasons
+    "autumn", "winter", "leaves", "petal", "bloom", "blossom", "cycle", "season", "equinox",
+    "solstice", "sunset", "dusk", "twilight", "dawn", "hour", "clock", "calendar", "pendulum",
+    "decay", "growth", "moment", "fleeting", "passing", "fade", "renewal", "ebb", "flow",
+
+    # Flowers (emphasized)
+    "rose", "lily", "chrysanthemum", "poppy", "tulip", "violet", "iris", "daffodil", "peony",
+    "camellia", "lavender", "carnation", "sunflower", "magnolia", "hyacinth", "daisy",
+    "wilt", "bloom", "garland", "bouquet", "wreath", "meadow", "perfume", "dew", "blush",
+
+    # Heritage, remembrance
+    "ancestor", "portrait", "lineage", "roots", "stone", "monument", "keepsake", "heirloom",
+    "name", "inscription", "story", "voice", "photo", "ruin", "echo", "trace", "fragment",
+    "inheritance", "generation", "reminder", "archive", "dust", "history", "ritual"
+]
+
 
 
 class PoemGenerator:
-    def __init__(self, input_csv: str, nlp_model: str = "en_core_web_md", num_poems: int = 20,
+    def __init__(self, input_csv: str, nlp_model: str = "en_core_web_lg", num_poems: int = 20,
                  poem_length: int = 22, output_dir: str = "poems", seed_word: Optional[str] = None):
         """
         Initialize the poem generator.
@@ -77,6 +104,8 @@ class PoemGenerator:
         self.num_poems = num_poems
         self.poem_length = poem_length
         self.output_dir = output_dir
+        self.input_csv = input_csv
+        self.nlp_model = nlp_model
         self.initial_seed = seed_word if seed_word else random.choice(WORD_SET)
         self.poem_cache = {}  # Cache for storing generated poems
 
@@ -330,7 +359,7 @@ class PoemGenerator:
                         f.write(f"{line}\n")
 
             # Also save all poems to a single file
-            with open(os.path.join(self.output_dir, "all_poems.txt"), 'w', encoding='utf-8') as f:
+            with open(os.path.join(self.output_dir, "all_poems.txt"), 'a+', encoding='utf-8') as f:
                 for poem in poems:
                     f.write(f"--- Poem {poem['id']} (Theme: {poem['theme']}) ---\n")
                     for line in poem['lines']:
@@ -478,7 +507,7 @@ def main():
     parser.add_argument("-i", "--input", default="clean4.csv", help="Input CSV file with cleaned sentences")
     parser.add_argument("-n", "--num-poems", type=int, default=20, help="Number of poems to generate")
     parser.add_argument("-l", "--length", type=int, default=22, help="Maximum number of lines per poem")
-    parser.add_argument("-m", "--model", default="en_core_web_md", help="spaCy model to use")
+    parser.add_argument("-m", "--model", default="en_core_web_lg", help="spaCy model to use")
     parser.add_argument("-o", "--output-dir", default="poems", help="Directory to save generated poems")
     parser.add_argument("-f", "--format", choices=["txt", "html", "json"], default="txt", help="Output format")
     parser.add_argument("-s", "--seed", default=None, help="Initial seed word for poem generation")

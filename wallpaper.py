@@ -25,6 +25,9 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional, Set, Union
 import unicodedata
+import csv
+import sys
+from generator import WORD_SET
 
 
 # ===== Deterministic Random Number Generator =====
@@ -46,6 +49,8 @@ class DeterministicRNG:
 
     def random_int(self, spread: int) -> int:
         """Generate a random integer from 0 to spread-1"""
+        if spread <= 0:  # Fix: prevent division by zero
+            return 0
         return self.random() % spread
 
     def random_range(self, min_val: int, max_val: int) -> int:
@@ -62,6 +67,8 @@ class DeterministicRNG:
 
     def pick(self, array: List) -> Any:
         """Pick a random element from an array"""
+        if not array:  # Fix: check for empty array
+            return None
         return array[self.random_int(len(array))]
 
 
@@ -106,13 +113,48 @@ class WallpaperPattern:
 
         # Unicode characters to use for patterns
         self.unicode_blocks = self._load_unicode_blocks()
-        self.pattern_chars = []
+        self.pattern_chars = self._select_unicode_chars(100)  # Fix: Initialize with some chars
 
         # Set the rules for the selected wallpaper group
         self._set_rules(self.group)
 
         # Initialize the canvas
         self.canvas = [[' ' for _ in range(self.width)] for _ in range(self.height)]
+
+        # Load poem data if available
+        self.poems = self._load_poems()
+
+    def _load_poems(self) -> List[str]:
+        """Load poems from the poems directory if it exists"""
+        poems = []
+        poems_dir = Path("poems")
+        if poems_dir.exists() and poems_dir.is_dir():
+            for poem_file in poems_dir.glob("poem_*.txt"):
+                try:
+                    with open(poem_file, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        # Skip the theme line and empty line
+                        if len(lines) > 2:
+                            poems.extend([line.strip() for line in lines[2:] if line.strip()])
+                except Exception:
+                    pass
+
+        # If no poems found from files, use some default poem lines
+        if not poems:
+            poems = [
+                "digital whispers dance across empty space",
+                "fractured geometry of forgotten dreams",
+                "pattern logic emerges from chaos",
+                "echoes of silicon in patterns unfold",
+                "symmetry breaks at the edge of perception",
+                "terminal beauty in unicode spaces",
+                "glyphs arrange like constellations",
+                "digital artifacts reveal hidden truths",
+                "characters drift in mathematical seas",
+                "structured randomness tells a story"
+            ]
+
+        return poems
 
     def _load_unicode_blocks(self) -> Dict[str, Tuple[int, int]]:
         """Load interesting Unicode block ranges"""
@@ -449,6 +491,10 @@ class WallpaperPattern:
         # Clear the canvas
         self.canvas = [[' ' for _ in range(self.width)] for _ in range(self.height)]
 
+        # Ensure pattern_chars is not empty
+        if not self.pattern_chars:
+            self.pattern_chars = self._select_unicode_chars(100)
+
         # Place a glyph at each position according to the pattern rules
         x_count = int(self.height / self.x_spacing) + 2
         y_count = int(self.height / self.y_spacing) + 2
@@ -486,6 +532,8 @@ class WallpaperPattern:
                         # Add random variation to make it more interesting
                         # Place a pattern glyph
                         glyph = self.rng.pick(self.pattern_chars)
+                        if glyph is None:  # Fallback if pick returns None
+                            glyph = "█"
 
                         # Calculate final position with all transformations
                         final_x = pos_x
@@ -566,8 +614,19 @@ class WallpaperPattern:
     def generate_pattern(self, poem_lines: Optional[List[str]] = None) -> None:
         """Generate a complete pattern, optionally embedding a poem"""
         self.draw_pattern()
-        if poem_lines:
-            self.embed_poem(poem_lines)
+
+        # If no poem lines are provided, select random ones from loaded poems
+        if not poem_lines and self.poems:
+            # Generate 2 random poem lines
+            selected_poem_lines = []
+            for _ in range(2):
+                if self.poems:
+                    line = self.rng.pick(self.poems)
+                    if line and line not in selected_poem_lines:
+                        selected_poem_lines.append(line)
+
+            if selected_poem_lines:
+                self.embed_poem(selected_poem_lines)
 
     def to_text(self) -> str:
         """Convert the pattern to a text string"""
@@ -695,7 +754,7 @@ class UnicodePatternServer:
                         <html>
                         <head>
                             <meta charset="utf-8">
-                            <title>Animated Unicode Patterns</title>
+                            <title>I NEVER PICKED A PROTECTED FLOWER EXCEPT FOR YOU</title>
                             <style>
                                 body {{
                                     background-color: #fff;
