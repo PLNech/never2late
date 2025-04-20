@@ -1,4 +1,4 @@
-# ₦∃⋁∃ℝ²ᒪΔͲ∃ ▓░▒  ~ d⍜t⍜ poetry generator ~▒▓▓░
+# ₦∃⋁∃ℝ²ᒪΔͲ∃ ▓░▒  ~ d⍜t⍜ unicode poetry  ~▒▓▓░
 
 > *"the day she picked a p̕͜r̀o̸tec̀͝t̨ed̷͞ f͟͡l̀o̵͢w͜͝e̕r̀͝ the sky ͡҉͜҉͢f̡͘e҉͠ļ̷̵̴̵͘͟͟ļ̷̵̴̵͘͟͟"*
 
