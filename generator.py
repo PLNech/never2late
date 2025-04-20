@@ -396,29 +396,48 @@ class PoemGenerator:
         cluster = []
 
         if feet_targets:
+            # Determine if this is a strict pattern (like haiku) that needs exact matches
+            strict_pattern = feet_pattern in ["575", "57577", "35353535"] or len(feet_targets) <= 5
+
             # For each target syllable count, find matching sentences
             for i, target_syllables in enumerate(feet_targets):
                 target_met = False
 
-                # First try to find a sentence with exact syllable count and containing a related word
-                for word in related_words:
-                    for sentence in self.sentences:
-                        if word in sentence.split() and sentence not in cluster:
-                            # Prioritize unused sentences
-                            if sentence not in self.used_sentences or len(self.used_sentences) > len(
-                                    self.sentences) * 0.7:
-                                syl_count = sentence_syllables[sentence]
-                                # Allow a margin of +/- 1 syllable
-                                if abs(syl_count - target_syllables) <= 1:
-                                    cluster.append(sentence)
-                                    self.used_sentences.add(sentence)  # Mark as used
-                                    target_met = True
-                                    break
+                # Try up to 10 times to find an exact match for strict patterns
+                max_retries = 10 if strict_pattern else 3
+                retry_count = 0
 
-                    if target_met:
-                        break
+                while not target_met and retry_count < max_retries:
+                    retry_count += 1
 
-                # If we couldn't find a matching sentence, use the closest one
+                    # Set acceptable margin - for strict patterns, require exact match
+                    if strict_pattern:
+                        acceptable_margin = 0  # Exact match required for haiku and short forms
+                    else:
+                        acceptable_margin = 1  # For longer forms, allow ±1 syllable
+
+                    # Try to find a sentence with matching syllable count containing a related word
+                    for word in related_words:
+                        for sentence in self.sentences:
+                            if word in sentence.split() and sentence not in cluster:
+                                # Prioritize unused sentences
+                                if sentence not in self.used_sentences or len(self.used_sentences) > len(
+                                        self.sentences) * 0.7:
+                                    syl_count = sentence_syllables[sentence]
+                                    # Check if within acceptable margin
+                                    if abs(syl_count - target_syllables) <= acceptable_margin:
+                                        cluster.append(sentence)
+                                        self.used_sentences.add(sentence)  # Mark as used
+                                        target_met = True
+                                        break
+                        if target_met:
+                            break
+
+                    # If still no match after multiple tries, gradually relax constraints
+                    if not target_met and retry_count >= max_retries - 1:
+                        acceptable_margin = 1  # Allow ±1 syllable on last try
+
+                # If we still couldn't find a matching sentence, use the closest one
                 if not target_met:
                     best_sentence = None
                     best_diff = float('inf')
@@ -704,22 +723,43 @@ class PoemGenerator:
             # Create a simple HTML output with all poems
             with open(os.path.join(self.output_dir, "poems.html"), 'w', encoding='utf-8') as f:
                 f.write("""<!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Generated Poems</title>
-                    <style>
-                        body { font-family: monospace; max-width: 800px; margin: 0 auto; padding: 20px; }
-                        .poem { margin-bottom: 40px; padding: 20px; border: 1px solid #eee; page-break-after: always; }
-                        .theme { font-weight: bold; margin-bottom: 15px; font-size: 1.2em; }
-                        .line { margin-bottom: 8px; }
-                        .syllables { color: #888; font-size: 0.8em; margin-left: 10px; }
-                        h1 { text-align: center; margin-bottom: 40px; }
-                    </style>
-                </head>
-                <body>
-                <h1>Generated Poems</h1>
-                """)
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Generated Poems</title>
+                        <style>
+                            body { font-family: monospace; max-width: 800px; margin: 0 auto; padding: 20px; }
+                            .poem { margin-bottom: 40px; padding: 20px; border: 1px solid #eee; page-break-after: always; }
+                            .theme { font-weight: bold; margin-bottom: 15px; font-size: 1.2em; }
+                            .line { margin-bottom: 8px; }
+                            .syllables { color: #888; font-size: 0.8em; margin-left: 10px; }
+                            h1 { text-align: center; margin-bottom: 40px; }
+                            .controls { text-align: center; margin-bottom: 20px; }
+                            button { padding: 8px 16px; cursor: pointer; }
+                        </style>
+                        <script>
+                            function toggleSyllables() {
+                                const syllables = document.querySelectorAll('.syllables');
+                                const btn = document.getElementById('toggleBtn');
+    
+                                for (let syl of syllables) {
+                                    if (syl.style.display === 'none') {
+                                        syl.style.display = 'inline';
+                                        btn.textContent = 'Hide Syllable Counts';
+                                    } else {
+                                        syl.style.display = 'none';
+                                        btn.textContent = 'Show Syllable Counts';
+                                    }
+                                }
+                            }
+                        </script>
+                    </head>
+                    <body>
+                    <h1>Generated Poems</h1>
+                    <div class="controls">
+                        <button id="toggleBtn" onclick="toggleSyllables()">Hide Syllable Counts</button>
+                    </div>
+                    """)
 
                 for poem in poems:
                     f.write(f'<div class="poem">\n')
