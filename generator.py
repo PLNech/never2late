@@ -349,8 +349,9 @@ class PoemGenerator:
         # Check if result is already in cache
         cache_key = (word.lower(), n)
         if cache_key in self.related_words_cache:
-            print(f"Using cached related words for '{word}'")
-            return self.related_words_cache[cache_key]
+            related = self.related_words_cache[cache_key]
+            print(f"Using cached related words for '{word}': {related[:15]}")
+            return related
 
         # Process the word to get the lemma
         doc = self.nlp(word)
@@ -762,13 +763,15 @@ class PoemGenerator:
             poems: List of poem dictionaries
             format: Output format ("txt", "html", or "json")
         """
-        if format == "txt":
+        if "txt" in format:
             for poem in poems:
-                filename = os.path.join(self.output_dir, f"poem_{poem['id'] if 'id' in poem else '1'}.txt")
+                txt = f"poem_{poem['id'] if 'id' in poem else '1'}.txt"
+                filename = os.path.join(self.output_dir, txt)
                 with open(filename, 'w', encoding='utf-8') as f:
                     f.write(f"Theme: {poem['theme']}\n\n")
                     for line in poem['lines']:
                         f.write(f"{line}\n")
+                print(f"Saved {txt}", end="\r")
 
             # Also save all poems to a single file
             with open(os.path.join(self.output_dir, "all_poems.txt"), 'w', encoding='utf-8') as f:
@@ -778,7 +781,8 @@ class PoemGenerator:
                     for line in poem['lines']:
                         f.write(f"{line}\n")
                     f.write("\n\n")
-        elif format == "html":
+            print("Saved all_poems.txt")
+        if "html" in format:
             # Create a simple HTML output with all poems
             with open(os.path.join(self.output_dir, "poems.html"), 'w', encoding='utf-8') as f:
                 f.write("""<!DOCTYPE html>
@@ -836,12 +840,20 @@ class PoemGenerator:
                     f.write('</div>\n')
 
                 f.write("</body></html>")
+            print("Saved poems.html")
 
-        elif format == "json":
+
+        if "json" in format:
             # Save as JSON
             with open(os.path.join(self.output_dir, "poems.json"), 'w', encoding='utf-8') as f:
                 json.dump(poems, f, indent=2)
-        else:
+            print("Saved poems.json")
+
+        filtered = [",", "txt", "json", "html"]
+        remaining = format
+        for f in filtered:
+            remaining = remaining.replace(f, "")
+        if len(remaining):
             print(f"Unknown format {format}...")
         print(f"Saved {len(poems)} poems to {self.output_dir}")
 
@@ -976,7 +988,7 @@ def main():
     parser.add_argument("-l", "--length", type=int, default=22, help="Maximum number of lines per poem")
     parser.add_argument("-m", "--model", default="en_core_web_lg", help="spaCy model to use")
     parser.add_argument("-o", "--output-dir", default="poems", help="Directory to save generated poems")
-    parser.add_argument("-f", "--format", choices=["txt", "html", "json"], default="txt", help="Output format")
+    parser.add_argument("-f", "--format", type=str, default="txt,json,html", help="Output format (one or more of txt, json, html, comma-separated)")
     parser.add_argument("-s", "--seed", default=None, help="Initial seed word for poem generation")
     parser.add_argument("-p", "--port", type=int, default=None, help="Run as HTTP server on specified port")
     parser.add_argument("-b", "--batch", type=int, default=None, help="Generate a large batch of poems (specify count)")
@@ -1039,6 +1051,7 @@ def main():
 
     if args.cache:
         generator.save_cache()
+
 
 if __name__ == "__main__":
     main()
