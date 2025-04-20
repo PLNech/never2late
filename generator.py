@@ -152,6 +152,7 @@ class PoemGenerator:
         self.nlp_model = nlp_model
         self.initial_seed = seed_word if seed_word else random.choice(WORD_SET)
         self.poem_cache = {}  # Cache for storing generated poems
+        self.used_sentences = set()
 
         # Create output directory if it doesn't exist
         Path(output_dir).mkdir(exist_ok=True)
@@ -259,7 +260,7 @@ class PoemGenerator:
                 continue
 
             vocab_words.append(token)
-
+        print(f"Setup vocab, total {len(vocab_words)} words at first.")
         # Calculate similarity for filtered words
         for token in vocab_words:
             token_text_lower = token.text.lower()
@@ -277,6 +278,7 @@ class PoemGenerator:
                 seen.add(token.lower())
                 result.append(token)
                 if len(result) >= n:
+                    print(f"FR({word, n}) found total {len(result)} words!")
                     break
 
         print(f"Found {len(result)} words related to '{word}': {result[:10]}")
@@ -348,12 +350,16 @@ class PoemGenerator:
                 for word in related_words:
                     for sentence in self.sentences:
                         if word in sentence.split() and sentence not in cluster:
-                            syl_count = sentence_syllables[sentence]
-                            # Allow a margin of +/- 1 syllable
-                            if abs(syl_count - target_syllables) <= 1:
-                                cluster.append(sentence)
-                                target_met = True
-                                break
+                            # Prioritize unused sentences
+                            if sentence not in self.used_sentences or len(self.used_sentences) > len(
+                                    self.sentences) * 0.7:
+                                syl_count = sentence_syllables[sentence]
+                                # Allow a margin of +/- 1 syllable
+                                if abs(syl_count - target_syllables) <= 1:
+                                    cluster.append(sentence)
+                                    self.used_sentences.add(sentence)  # Mark as used
+                                    target_met = True
+                                    break
 
                     if target_met:
                         break
@@ -390,12 +396,17 @@ class PoemGenerator:
             for word in related_words:
                 for sentence in self.sentences:
                     if word in sentence.split() and sentence not in cluster:
-                        cluster.append(sentence)
-                        if len(cluster) >= self.poem_length:
-                            break
-
-                if len(cluster) >= self.poem_length:
-                    break
+                        # Only use sentences that haven't been used in previous poems
+                        if sentence not in self.used_sentences:
+                            cluster.append(sentence)
+                            self.used_sentences.add(sentence)  # Mark as used
+                            if len(cluster) >= self.poem_length:
+                                break
+                        # If we're running low on sentences, allow some reuse
+                        elif len(self.used_sentences) > len(self.sentences) * 0.7:
+                            cluster.append(sentence)
+                            if len(cluster) >= self.poem_length:
+                                break
 
             # If we don't have enough sentences, add more from the seed word
             if len(cluster) < min(self.poem_length, 5):
@@ -424,11 +435,14 @@ class PoemGenerator:
 
             if best_sentence:
                 cluster.append(best_sentence)
+                self.used_sentences.add(best_sentence)
             else:
                 # If all else fails, add a random sentence
                 remaining = [s for s in self.sentences if s not in cluster]
                 if remaining:
-                    cluster.append(random.choice(remaining))
+                    random_sentence = random.choice(remaining)
+                    cluster.append(random_sentence)
+                    self.used_sentences.add(random_sentence)
                 else:
                     break
 
@@ -483,6 +497,7 @@ class PoemGenerator:
         """
         all_poems = []
         current_seed = self.initial_seed
+        used_themes = set()
 
         print(f"Generating {self.num_poems} poems...")
         for i in range(self.num_poems):
@@ -490,6 +505,18 @@ class PoemGenerator:
 
             # Generate the poem
             poem_lines, theme = self.make_poem(current_seed)
+
+            # Try to find an unused theme if this one has been used
+            attempts = 0
+            while theme in used_themes and attempts < 5:  # Limit attempts to avoid infinite loops
+                # Get a different seed
+                new_seed = self.choose_next_seed(current_seed)
+                if new_seed != current_seed:
+                    current_seed = new_seed
+                    poem_lines, theme = self.make_poem(current_seed)
+                    attempts += 1
+                else:
+                    break
 
             if poem_lines:
                 # Create a dictionary with poem data
@@ -501,6 +528,8 @@ class PoemGenerator:
                     "timestamp": time.time()
                 }
 
+                # Track used theme
+                used_themes.add(theme)
                 all_poems.append(poem_data)
 
                 # Choose the next seed word
