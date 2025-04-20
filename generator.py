@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+import numpy as np
 import spacy
 
 WORD_SET = [
@@ -152,7 +153,12 @@ class PoemGenerator:
         self.nlp_model = nlp_model
         self.initial_seed = seed_word if seed_word else random.choice(WORD_SET)
         self.poem_cache = {}  # Cache for storing generated poems
-        self.used_sentences = set()
+        self.used_sentences = set()  # Track used sentences across poems
+        self.used_themes = set()  # Track used themes to avoid repetition
+
+        self.corpus_words = None  # Will store unique content words from corpus
+        self.similarity_cache = {}  # Cache for word similarities
+        self.word_vectors_cache = {}  # Cache for word vectors
 
         # Create output directory if it doesn't exist
         Path(output_dir).mkdir(exist_ok=True)
@@ -184,31 +190,15 @@ class PoemGenerator:
             print(f"Error loading data: {e}")
             exit(1)
 
-    def find_related_words(self, word: str, n: int = 15) -> List[str]:
-        """
-        Find words related to the given word using spaCy word vectors
+    def extract_corpus_vocabulary(self):
+        """Extract and cache all content words from the corpus"""
+        if self.corpus_words is not None:
+            return self.corpus_words
 
-        Args:
-            word: The seed word to find related words for
-            n: Number of related words to return
+        print("Extracting vocabulary from corpus...")
+        start_time = time.time()
 
-        Returns:
-            List of related words
-        """
-        # Process the word to get the lemma first
-        doc = self.nlp(word)
-        if not doc or len(doc) == 0:
-            return []
-
-        # Get the first token
-        word_token = doc[0]
-
-        # Skip processing if word not in vocabulary or has no vector
-        if not word_token.has_vector:
-            print(f"Word '{word}' has no vector in the vocabulary")
-            return []
-
-        # Combined expanded stopwords list
+        # Combined expanded stopwords list (copied from find_related_words)
         stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'there', 'here', 'that', 'this', 'those',
                      'these', 'it', 'its', 'is', 'was', 'be', 'been', 'being', 'am', 'are', 'were', 'will', 'would',
                      'shall', 'should', 'may', 'might', 'must', 'can', 'could', 'you', 'your', 'we', 'our', 'they',
@@ -220,66 +210,130 @@ class PoemGenerator:
                      'no', 'nor', 'not', 'only', 'own', 'same',
                      'so', 'than', 'too', 'very', 'let', 'just', 'now', 'ever'}
 
-        # Common abbreviations, stems, and shortened forms to filter out
+        # Common abbreviations and stems to filter out
         abbrevs_and_stems = {'inc', 'ltd', 'corp', 'cuz', 'cos', 'coz', 'bout', 'doin', 'goin',
                              'nothin', 'lovin', 'havin', 'fla', 'calif', 'tenn', 'okla', 'wis',
                              'ind', 'mich', 'mont', 'colo', 'conn', 'bros', 'sen', 'gen', 'mrs',
                              'gov', 'ariz', 'minn', 'ark', 'ill', 'wash', 'mass', 'dept', 'dist',
                              'sha', 'kan', 'ala', 'prof', 'ore', 'rep', 'nuff', 'gon', 'deb', 'xdd',
-                             'rev', 'adm', 'nev', 'messrs',
+                             'rev', 'adm', 'nev', 'messrs', 'del', 'kans', 'neb',
                              'div', 'assn', 'assoc', 'mfg', 'natl', 'intl', 'amer', 'univ', 'tech',
                              'admin', 'mgr', 'pres', 'dir', 'coord', 'eng', 'sci', 'acct', 'atty'}
 
-        # Find similar words using vector similarity
-        related = []
-        counter = 0
-
-        # Get all vocabulary words first so we can sort by length
-        vocab_words = []
-        for token in self.nlp.vocab:
-            counter += 1
-            if counter > 100000:  # Limit vocabulary search to avoid excessive computation
-                break
-
-            # More aggressive filtering
+        # Combine all sentences into one large text for batch processing
+        all_text = " ".join(self.sentences)
+        doc = self.nlp(all_text)
+        print("Doc generated.")
+        corpus_words = set()
+        for token in doc:
             token_text_lower = token.text.lower()
+            if (token_text_lower not in stopwords and
+                    token_text_lower not in abbrevs_and_stems and
+                    token.is_alpha and
+                    len(token_text_lower) > 2 and
+                    not token.is_punct and
+                    not token.is_space):
+                corpus_words.add(token_text_lower)
 
-            # Skip unwanted words
-            if (token_text_lower == word.lower() or
-                    token_text_lower in stopwords or
-                    token_text_lower in abbrevs_and_stems or
-                    not token.has_vector or
-                    not token.is_alpha or
-                    len(token_text_lower) <= 2 or
-                    token.is_punct or
-                    token.is_space or
-                    "'" in token_text_lower or
-                    token_text_lower.endswith("in'") or  # Filter words like lovin'
-                    token_text_lower.endswith("in") and len(token_text_lower) > 3 or  # Filter potential stems
-                    token_text_lower.endswith("ed") and len(token_text_lower) < 5):  # Filter short past tense forms
-                continue
+        # Also include predefined WORD_SET
+        for word in WORD_SET:
+            word_lower = word.lower()
+            if (word_lower not in stopwords and
+                    word_lower not in abbrevs_and_stems and
+                    len(word_lower) > 2):
+                corpus_words.add(word_lower)
 
-            vocab_words.append(token)
-        print(f"Setup vocab, total {len(vocab_words)} words at first.")
-        # Calculate similarity for filtered words
-        for token in vocab_words:
-            token_text_lower = token.text.lower()
-            similarity = word_token.similarity(token)
-            related.append((token_text_lower, similarity, len(token_text_lower)))
+        # Store in instance variable
+        self.corpus_words = corpus_words
 
-        # Sort primarily by similarity but give a small bonus to longer words (more poetic)
-        related.sort(key=lambda x: (x[1] + (x[2] * 0.01)), reverse=True)
+        # Pre-compute vectors for all corpus words to speed up similarity calculations
+        print(f"Pre-computing vectors for {len(corpus_words)} words...")
+        for word in corpus_words:
+            self.get_vector(word)
 
-        # Remove duplicates due to case variations
-        seen = set()
-        result = []
-        for token, _, _ in related:
-            if token.lower() not in seen and token.lower() != word.lower():
-                seen.add(token.lower())
-                result.append(token)
-                if len(result) >= n:
-                    print(f"FR({word, n}) found total {len(result)} words!")
-                    break
+        print(f"Extracted {len(corpus_words)} unique content words in {time.time() - start_time:.2f} seconds")
+        return corpus_words
+
+    def get_vector(self, word):
+        """Get and cache vector for a word"""
+        if word in self.word_vectors_cache:
+            return self.word_vectors_cache[word]
+
+        doc = self.nlp(word)
+        if len(doc) > 0 and doc[0].has_vector:
+            vector = doc[0].vector
+            self.word_vectors_cache[word] = vector
+            return vector
+        return None
+
+    def compute_similarity(self, word1, word2):
+        """Compute and cache similarity between two words"""
+        # Create a cache key (alphabetically sorted for consistent ordering)
+        cache_key = tuple(sorted([word1, word2]))
+
+        if cache_key in self.similarity_cache:
+            return self.similarity_cache[cache_key]
+
+        vector1 = self.get_vector(word1)
+        vector2 = self.get_vector(word2)
+
+        if vector1 is not None and vector2 is not None:
+            # Calculate cosine similarity directly from vectors
+            similarity = np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
+            self.similarity_cache[cache_key] = similarity
+            return similarity
+        return 0.0
+
+    def find_related_words(self, word: str, n: int = 15) -> List[str]:
+        """
+        Find words related to the given word using spaCy word vectors,
+        with memoization for better performance.
+
+        Args:
+            word: The seed word to find related words for
+            n: Number of related words to return
+
+        Returns:
+            List of related words
+        """
+        # Process the word to get the lemma
+        doc = self.nlp(word)
+        if not doc or len(doc) == 0:
+            return []
+
+        word_lower = word.lower()
+
+        # Skip processing if word not in vocabulary or has no vector
+        if self.get_vector(word_lower) is None:
+            print(f"Word '{word}' has no vector in the vocabulary")
+            return []
+
+        # Make sure corpus words are extracted
+        if self.corpus_words is None:
+            self.extract_corpus_vocabulary()
+
+        # Calculate similarity with batch processing
+        batch_size = 500  # Process words in batches
+        all_similarities = []
+
+        # Process in batches with multiprocessing
+        all_words = list(self.corpus_words)
+        word_batches = [all_words[i:i + batch_size] for i in range(0, len(all_words), batch_size)]
+
+        # Process each batch
+        for batch in word_batches:
+            batch_similarities = []
+            for candidate in batch:
+                if candidate != word_lower:
+                    similarity = self.compute_similarity(word_lower, candidate)
+                    batch_similarities.append((candidate, similarity, len(candidate)))
+            all_similarities.extend(batch_similarities)
+
+        # Sort by similarity with length bonus
+        all_similarities.sort(key=lambda x: (x[1] + (x[2] * 0.01)), reverse=True)
+
+        # Get top candidates
+        result = [word for word, _, _ in all_similarities[:min(n, len(all_similarities))]]
 
         print(f"Found {len(result)} words related to '{word}': {result[:10]}")
         return result
@@ -368,29 +422,37 @@ class PoemGenerator:
                 if not target_met:
                     best_sentence = None
                     best_diff = float('inf')
+                    best_used = True  # Track if our best match is already used
 
                     for sentence in self.sentences:
                         if sentence not in cluster:
                             for word in related_words:
                                 if word in sentence.split():
                                     syl_diff = abs(sentence_syllables[sentence] - target_syllables)
-                                    if syl_diff < best_diff:
+                                    # Prefer unused sentences with a similar syllable count
+                                    is_used = sentence in self.used_sentences
+                                    if (syl_diff < best_diff or (syl_diff == best_diff and is_used < best_used)):
                                         best_diff = syl_diff
                                         best_sentence = sentence
+                                        best_used = is_used
 
                     if best_sentence:
                         cluster.append(best_sentence)
+                        self.used_sentences.add(best_sentence)  # Mark as used
                     else:
                         # If still no match, just find any sentence with close syllable count
                         for sentence in self.sentences:
                             if sentence not in cluster:
                                 syl_diff = abs(sentence_syllables[sentence] - target_syllables)
-                                if syl_diff < best_diff:
+                                is_used = sentence in self.used_sentences
+                                if (syl_diff < best_diff or (syl_diff == best_diff and is_used < best_used)):
                                     best_diff = syl_diff
                                     best_sentence = sentence
+                                    best_used = is_used
 
                         if best_sentence:
                             cluster.append(best_sentence)
+                            self.used_sentences.add(best_sentence)  # Mark as used
         else:
             # Original approach for non-syllable-constrained poems
             for word in related_words:
@@ -408,11 +470,15 @@ class PoemGenerator:
                             if len(cluster) >= self.poem_length:
                                 break
 
+                if len(cluster) >= self.poem_length:
+                    break
+
             # If we don't have enough sentences, add more from the seed word
             if len(cluster) < min(self.poem_length, 5):
                 for sentence in self.sentences:
                     if seed_word in sentence and sentence not in cluster:
                         cluster.append(sentence)
+                        self.used_sentences.add(sentence)  # Mark as used
                     if len(cluster) >= self.poem_length:
                         break
 
@@ -423,11 +489,15 @@ class PoemGenerator:
 
             for sentence in self.sentences:
                 if sentence not in cluster:
+                    # Give bonus to unused sentences
+                    sentence_score_multiplier = 2.0 if sentence not in self.used_sentences else 1.0
                     # Calculate a relevance score
                     score = 0
                     for word in related_words:
                         if word in sentence:
                             score += 1
+
+                    score *= sentence_score_multiplier
 
                     if score > best_score:
                         best_score = score
@@ -497,7 +567,6 @@ class PoemGenerator:
         """
         all_poems = []
         current_seed = self.initial_seed
-        used_themes = set()
 
         print(f"Generating {self.num_poems} poems...")
         for i in range(self.num_poems):
@@ -508,7 +577,7 @@ class PoemGenerator:
 
             # Try to find an unused theme if this one has been used
             attempts = 0
-            while theme in used_themes and attempts < 5:  # Limit attempts to avoid infinite loops
+            while theme in self.used_themes and attempts < 5:  # Limit attempts to avoid infinite loops
                 # Get a different seed
                 new_seed = self.choose_next_seed(current_seed)
                 if new_seed != current_seed:
@@ -519,17 +588,21 @@ class PoemGenerator:
                     break
 
             if poem_lines:
+                # Calculate syllable counts for information
+                syllable_counts = [count_sentence_syllables(line) for line in poem_lines]
+
                 # Create a dictionary with poem data
                 poem_data = {
                     "id": i + 1,
                     "lines": poem_lines,
                     "theme": theme,
                     "seed": current_seed,
+                    "syllable_counts": syllable_counts,
                     "timestamp": time.time()
                 }
 
                 # Track used theme
-                used_themes.add(theme)
+                self.used_themes.add(theme)
                 all_poems.append(poem_data)
 
                 # Choose the next seed word
@@ -620,14 +693,13 @@ class PoemGenerator:
                         f.write(f"{line}\n")
 
             # Also save all poems to a single file
-            with open(os.path.join(self.output_dir, "all_poems.txt"), 'a+', encoding='utf-8') as f:
+            with open(os.path.join(self.output_dir, "all_poems.txt"), 'w', encoding='utf-8') as f:
                 for poem in poems:
                     poem_id = poem['id'] if 'id' in poem else ''
                     f.write(f"--- Poem {poem_id} (Theme: {poem['theme']}) ---\n")
                     for line in poem['lines']:
                         f.write(f"{line}\n")
                     f.write("\n\n")
-
         elif format == "html":
             # Create a simple HTML output with all poems
             with open(os.path.join(self.output_dir, "poems.html"), 'w', encoding='utf-8') as f:
@@ -641,6 +713,7 @@ class PoemGenerator:
                         .poem { margin-bottom: 40px; padding: 20px; border: 1px solid #eee; page-break-after: always; }
                         .theme { font-weight: bold; margin-bottom: 15px; font-size: 1.2em; }
                         .line { margin-bottom: 8px; }
+                        .syllables { color: #888; font-size: 0.8em; margin-left: 10px; }
                         h1 { text-align: center; margin-bottom: 40px; }
                     </style>
                 </head>
@@ -651,8 +724,16 @@ class PoemGenerator:
                 for poem in poems:
                     f.write(f'<div class="poem">\n')
                     f.write(f'<div class="theme">Theme: {poem["theme"]}</div>\n')
-                    for line in poem['lines']:
-                        f.write(f'<div class="line">{line}</div>\n')
+
+                    # If we have syllable counts, display them
+                    if 'syllable_counts' in poem:
+                        for i, (line, count) in enumerate(zip(poem['lines'], poem['syllable_counts'])):
+                            f.write(
+                                f'<div class="line">{line}<span class="syllables">({count} syllables)</span></div>\n')
+                    else:
+                        for line in poem['lines']:
+                            f.write(f'<div class="line">{line}</div>\n')
+
                     f.write('</div>\n')
 
                 f.write("</body></html>")
