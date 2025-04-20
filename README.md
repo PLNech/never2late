@@ -2,63 +2,34 @@
 
 > *"the day she picked a p̕͜r̀o̸tec̀͝t̨ed̷͞ f͟͡l̀o̵͢w͜͝e̕r̀͝ the sky ͡҉͜҉͢f̡͘e҉͠ļ̷̵̴̵͘͟͟ļ̷̵̴̵͘͟͟"*
 
-
-
 ## ᓚᘏᗢ A B̶r̴o̴k̶e̶n̷ I̴ and A B̶r̴o̴k̶e̶n̷ Y̵o̷u̶ ᓚᘏᗢ
 
 *Never2Late* 𝓲𝓼 an ██████ poetry-██████ making machine ████████ from what is ████████ lost. 
 In the spaces between ███ █████ on WordReference.com, ███████ oblivion, we find the ██████████ of language 
 from ███████ our collective ████.
 
+Developed for la _Fête des Fleurs_, 2025 edition.
 
-> Theme: chrysanthemum
-> jewellery shop
-> these flowers are long their prime.
-> my garland shall be
+![image](https://github.com/user-attachments/assets/a362785c-3a4e-467f-900f-8ead1ad03761)
+
 ----
-> Theme: soul
-> affect the passion
-> run like iron through his soul
-> go with happiness
-----
-> Theme: darkness
-> yet in what darkness
-> red woods visible in the south
-> blot the horizon
-
-
 ## *"𝔻𝕖𝕒𝕥𝕙 𝕚𝕤 𝕟𝕠𝕥 𝕥𝕙𝕖 𝕖𝕟𝕕 𝕠𝕗 𝕓𝕖𝕒𝕦𝕥𝕪. ℙ𝕠𝕖𝕥𝕣𝕪 𝕚𝕤 𝕥𝕙𝕖 𝕣𝕖𝕤𝕦𝕣𝕣𝕖𝕔𝕥𝕚𝕠𝕟 𝕠𝕗 𝕞𝕖𝕒𝕟𝕚𝕟𝕘."*
 
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 
 ## ℂ𝕣𝕖𝕕𝕚𝕥𝕤 𝕒𝕟𝕕 𝔸𝕔𝕜𝕟𝕠𝕨𝕝𝕖𝕕𝕘𝕖𝕞𝕖𝕟𝕥𝕤 ⌬⎰◊⠬⠃↤☘
 
-**Profuse thanks to everest pipkin**, whose work ["i've never picked a protected flower"](https://github.com/everestpipkin/never/blob/master/never.pdf) inspired this project. Their 400-page glitched poetry PDF is a masterpiece of digital art and concrete poetry. The [original forum thread](https://forum.wordreference.com/threads/ive-never-picked-a-protected-flower.644138/) that inspired their work continues to echo through this derivative.
+- **Profuse thanks to everest pipkin**, whose work ["i've never picked a protected flower"](https://github.com/everestpipkin/never/blob/master/never.pdf) inspired this project.  
+Their 400-page generative glitch poetry PDF is IMO a masterpiece of digital art and concrete poetry <3 
+- The [original forum thread](https://forum.wordreference.com/threads/ive-never-picked-a-protected-flower.644138/) which inspired the projects' names
 
 > *"i've never picked a protected flower"* 
-
-This project is a reinterpretation of their work for the installation "Fête des Fleurs," adding digital flora to the metaphysical garden of found text.
-
-Original repository files:
-```
-├── clean_data.js
-├── data_scraper.py
-├── english4.csv
-├── generator.js
-├── jscii.js
-├── LICENSE
-├── never.pdf
-├── README.md
-├── template.html
-├── unifont.ttf
-└── wallpaper.js
-```
-
 See the source at [github.com/everestpipkin/never](https://github.com/everestpipkin/never)
+
 
 ## 🅼🅰🅽🅸🅵🅴🆂🆃🅾
 
-Instead of relying on external APIs for conceptual relationships, we use local NLP models with spaCy + vector similarity computations to retrieve semantically proximate words directly from the corpus, based on English NLP pre-trained word models.
+Instead of relying on external APIs for conceptual relationships, we use local NLP models with [spaCy + vector similarity computations](https://spacy.io/usage/linguistic-features#vectors-similarity) to retrieve semantically proximate words directly from the corpus, based on English NLP pre-trained [word models](https://spacy.io/usage/models).
 
 The project is composed of four independent yet interconnected parts:
 
@@ -67,7 +38,7 @@ The project is composed of four independent yet interconnected parts:
 3. `generator.py` - ੮гคຖŞ৲๏гຖŞ random words into semantic poetry
 4. `wallpaper.py` - єη¢α∂єѕ the poems into unicode patterns
 
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 
 ## 🄸🄽🅂🅃🄰🄻🄻🄰🅃🄸🄾🄽 ╜◊⎼▲▅⠌◇╯◆
 
@@ -99,6 +70,7 @@ Options:
 - `--delay DELAY` - Delay between requests (seconds)
 - `--batch BATCH` - Save to disk after this many pages
 
+![image](https://github.com/user-attachments/assets/502d359c-6bd9-4eec-b5f1-8ca31ed5b07f)
 
 > *"In the gaps between forum words, I found sentences that never existed."*
 
@@ -156,6 +128,10 @@ Saved 100 poems to poems
 Saving cache to .poem_cache.bin...
 Saved 1545 word vectors, 322200 similarity pairs, and 225 related words sets
 ```
+
+![image](https://github.com/user-attachments/assets/95a96503-2e5c-47e0-b45b-fc13549e592e)
+
+
 > *"Every poem is an epitaph. ／人◕ ‿‿ ◕人＼"*
 
 ### 4. 💮 Creating Unicode Wallpaper 💮
@@ -184,10 +160,10 @@ The `-D` parameter controls the density of Unicode characters in the output. Her
 
 | Command                    | Results                                          |
 |----------------------------| ------------------------------------------------ |
-| `-D 10 -H 10 -W 40`        | Take screenshot of sparse character output       |
-| `-D 100 -H 10 -W 40`       | Take screenshot of medium density output         |
-| `-D 500 -H 10 -W 40`       | Take screenshot of high density output           |
-| `-D 1000 -H 10 -W 40`      | Take screenshot of maximum density output        |
+| `-D 50 -H 10 -W 40`        | ![image](https://github.com/user-attachments/assets/8b7fda22-1ec2-4a00-84ba-5b268ecf672e) |
+| `-D 100 -H 12 -W 40`       | ![image](https://github.com/user-attachments/assets/0b553bc9-841e-41ca-9138-996ddd6f87b2) |
+| `-D 500 -H 28 -W 80`       | ![image](https://github.com/user-attachments/assets/bf542700-bf62-404a-b4ce-25adcd46d9f4) |
+| `-D 1000 -H 10 -W 40`      | ![image](https://github.com/user-attachments/assets/15452188-3f58-4df8-8064-9742013f6fa1) |
 
 ## 🅣🅞🅓🅞 ▒▓▒▓▒▓▒▓▒▓▒▓▒
 
@@ -198,11 +174,11 @@ The `-D` parameter controls the density of Unicode characters in the output. Her
 - Enhance thematic poem generation
 - Fine-tune feet/syllable matching logic
 
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 
 
 ## ℓιƈєηѕє ╛╝╜┶⌧┊
 
-This project is free software. Take it, use it, modify it. Just add your own dataset!
+This project is free software. Take it, use it, modify it, reshare it. Just add/download your own dataset!
 
 🅛🅘🅒🅔🅝🅢🅔🅓 🅤🅝🅓🅔🅡 🅣🅗🅔 🅖🅝🅤 🅖🅟🅛-𝟹.𝟶
