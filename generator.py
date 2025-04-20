@@ -16,6 +16,7 @@ import http.server
 import json
 import multiprocessing
 import os
+import pickle
 import random
 import socketserver
 import time
@@ -121,7 +122,8 @@ def count_sentence_syllables(sentence: str) -> int:
 
 class PoemGenerator:
     def __init__(self, input_csv: str, nlp_model: str = "en_core_web_lg", num_poems: int = 20,
-                 poem_length: int = 22, output_dir: str = "poems", seed_word: Optional[str] = None):
+                 poem_length: int = 22, output_dir: str = "poems", seed_word: Optional[str] = None,
+                 cache_file: Optional[str] = None):
         """
         Initialize the poem generator.
 
@@ -132,6 +134,7 @@ class PoemGenerator:
             poem_length: Maximum number of lines in each poem
             output_dir: Directory to save generated poems
             seed_word: Optional starting seed word
+            cache_file: File to store vectors
         """
         print(f"Loading spaCy model: {nlp_model}...")
         try:
@@ -159,12 +162,56 @@ class PoemGenerator:
         self.corpus_words = None  # Will store unique content words from corpus
         self.similarity_cache = {}  # Cache for word similarities
         self.word_vectors_cache = {}  # Cache for word vectors
+        self.related_words_cache = {}  # Cache for related words results
+        self.cache_file = cache_file
+
+        if cache_file and os.path.exists(cache_file):
+            self.load_cache()
 
         # Create output directory if it doesn't exist
         Path(output_dir).mkdir(exist_ok=True)
 
         # Load data from CSV
         self.load_data(input_csv)
+
+    def save_cache(self):
+        """Save word vectors, similarity cache, and related words cache to file"""
+        if not self.cache_file:
+            return
+
+        cache_data = {
+            'word_vectors': self.word_vectors_cache,
+            'similarity': self.similarity_cache,
+            'corpus_words': self.corpus_words,
+            'related_words': self.related_words_cache
+        }
+
+        print(f"Saving cache to {self.cache_file}...")
+        with open(self.cache_file, 'wb') as f:
+            pickle.dump(cache_data, f)
+        print(f"Saved {len(self.word_vectors_cache)} word vectors, {len(self.similarity_cache)} similarity pairs, "
+              f"and {len(self.related_words_cache)} related words sets")
+
+    # Update load_cache to load related_words_cache:
+    def load_cache(self):
+        """Load word vectors, similarity cache, and related words cache from file"""
+        if not self.cache_file or not os.path.exists(self.cache_file):
+            return
+
+        print(f"Loading cache from {self.cache_file}...")
+        try:
+            with open(self.cache_file, 'rb') as f:
+                cache_data = pickle.load(f)
+
+            self.word_vectors_cache = cache_data.get('word_vectors', {})
+            self.similarity_cache = cache_data.get('similarity', {})
+            self.corpus_words = cache_data.get('corpus_words', None)
+            self.related_words_cache = cache_data.get('related_words', {})
+
+            print(f"Loaded {len(self.word_vectors_cache)} word vectors, {len(self.similarity_cache)} similarity pairs, "
+                  f"and {len(self.related_words_cache)} related words sets")
+        except Exception as e:
+            print(f"Error loading cache: {e}")
 
     def load_data(self, csv_path: str) -> None:
         """Load and process data from CSV file"""
@@ -251,6 +298,9 @@ class PoemGenerator:
         for word in corpus_words:
             self.get_vector(word)
 
+        if self.cache_file:
+            print(f"Saving vectors to cache {self.cache_file}...")
+            self.save_cache()
         print(f"Extracted {len(corpus_words)} unique content words in {time.time() - start_time:.2f} seconds")
         return corpus_words
 
@@ -296,6 +346,12 @@ class PoemGenerator:
         Returns:
             List of related words
         """
+        # Check if result is already in cache
+        cache_key = (word.lower(), n)
+        if cache_key in self.related_words_cache:
+            print(f"Using cached related words for '{word}'")
+            return self.related_words_cache[cache_key]
+
         # Process the word to get the lemma
         doc = self.nlp(word)
         if not doc or len(doc) == 0:
@@ -335,6 +391,9 @@ class PoemGenerator:
         # Get top candidates
         result = [word for word, _, _ in all_similarities[:min(n, len(all_similarities))]]
 
+        # Cache the result
+        self.related_words_cache[cache_key] = result
+
         print(f"Found {len(result)} words related to '{word}': {result[:10]}")
         return result
 
@@ -354,8 +413,8 @@ class PoemGenerator:
 
         # Use the first properly formed related word as the theme (not a partial word)
         theme = seed_word
-        for word in sorted(related_words, key=lambda x: len(x), reverse=True):
-            if len(word) > 3:
+        for word in related_words:
+            if len(word) >= 4:
                 theme = word
                 break
 
@@ -726,7 +785,7 @@ class PoemGenerator:
                     <html>
                     <head>
                         <meta charset="utf-8">
-                        <title>Generated Poems</title>
+                        <title>I never picked a protected flower</title>
                         <style>
                             body { font-family: monospace; max-width: 800px; margin: 0 auto; padding: 20px; }
                             .poem { margin-bottom: 40px; padding: 20px; border: 1px solid #eee; page-break-after: always; }
@@ -922,6 +981,7 @@ def main():
     parser.add_argument("-p", "--port", type=int, default=None, help="Run as HTTP server on specified port")
     parser.add_argument("-b", "--batch", type=int, default=None, help="Generate a large batch of poems (specify count)")
     parser.add_argument("-w", "--workers", type=int, default=4, help="Number of worker processes for batch generation")
+    parser.add_argument("--cache", type=str, default=None, help="Cache file for word vectors and similarity")
     parser.add_argument("-r", "--related", type=str, default=None, help="Test related words")
     parser.add_argument("--feet", type=str, default=None,
                         help="Pattern for syllable counts (e.g., '575' for haiku, '12x4' for alexandrines)")
@@ -939,7 +999,8 @@ def main():
         num_poems=args.num_poems,
         poem_length=args.length,
         output_dir=args.output_dir,
-        seed_word=args.seed
+        seed_word=args.seed,
+        cache_file=args.cache
     )
 
     if args.related:
@@ -976,6 +1037,8 @@ def main():
             poems = generator.generate_poems()
         generator.save_poems(poems, format=args.format)
 
+    if args.cache:
+        generator.save_cache()
 
 if __name__ == "__main__":
     main()
