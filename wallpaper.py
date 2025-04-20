@@ -14,20 +14,28 @@ Features:
 - Run as interactive animation in a browser
 """
 
-import random
 import math
 import argparse
-import os
 import time
 import http.server
 import socketserver
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional, Set, Union
+from typing import List, Dict, Any, Tuple, Optional
 import unicodedata
-import csv
-import sys
-from generator import WORD_SET
+
+DEFAULT_POEMS = [
+    "d1g1tal wh_spers fr@cture sp@ce/time c0ntinuum",
+    "br0ken:geom3try[][][][]dreams^leaking~mem0ry",
+    "l0gic.exe crashεs ιn τhe vøid βetween chαos",
+    "εchθes οf sιlιcθn un¢0de/de¢0de/re¢0de",
+    "sym/me/try gl!tch_s @t r3ality's 3dge",
+    "t3rm1nal fl0wers bl00m in nu||_space",
+    "un1c0de c0nstellations bl33d through scr33n",
+    "art1facts wh1sper 01100100 01100001 01100100 01100001",
+    "ch@r@cters dr0wn1ng in m@them@tic@l n0ise~~~",
+    "r@nd0mness writes p03try wh3n n0 0ne's l00king"
+]
 
 
 # ===== Deterministic Random Number Generator =====
@@ -125,34 +133,25 @@ class WallpaperPattern:
         self.poems = self._load_poems()
 
     def _load_poems(self) -> List[str]:
-        """Load poems from the poems directory if it exists"""
+        """Load poems from the poems.json file if it exists"""
         poems = []
-        poems_dir = Path("poems")
-        if poems_dir.exists() and poems_dir.is_dir():
-            for poem_file in poems_dir.glob("poem_*.txt"):
-                try:
-                    with open(poem_file, 'r', encoding='utf-8') as f:
-                        lines = f.readlines()
-                        # Skip the theme line and empty line
-                        if len(lines) > 2:
-                            poems.extend([line.strip() for line in lines[2:] if line.strip()])
-                except Exception:
-                    pass
+        poems_file = Path("poems/poems.json")
 
-        # If no poems found from files, use some default poem lines
-        if not poems:
-            poems = [
-                "digital whispers dance across empty space",
-                "fractured geometry of forgotten dreams",
-                "pattern logic emerges from chaos",
-                "echoes of silicon in patterns unfold",
-                "symmetry breaks at the edge of perception",
-                "terminal beauty in unicode spaces",
-                "glyphs arrange like constellations",
-                "digital artifacts reveal hidden truths",
-                "characters drift in mathematical seas",
-                "structured randomness tells a story"
-            ]
+        if poems_file.exists():
+            try:
+                with open(poems_file, 'r', encoding='utf-8') as f:
+                    poems_data = json.load(f)
+                    # Extract lines from each poem
+                    for poem in poems_data:
+                        if "lines" in poem and isinstance(poem["lines"], list):
+                            poems.extend([line.strip() for line in poem["lines"] if line.strip()])
+            except Exception as e:
+                print(f"Error loading poems.json: {e}")
+                # Fall back to default poems
+                poems = DEFAULT_POEMS
+        else:
+            print("poems.json not found - did you run generator.py with -f json? Using default texts for rendering.")
+            poems = DEFAULT_POEMS
 
         return poems
 
@@ -640,7 +639,7 @@ class WallpaperPattern:
             '<html>',
             '<head>',
             '    <meta charset="utf-8">',
-            '    <title>Unicode Wallpaper Pattern</title>',
+            '    <title>I never picked a protected flower</title>',
             '    <style>',
             '        body { background-color: #fff; color: #000; margin: 0; padding: 0; }',
             '        .pattern { font-family: monospace; white-space: pre; line-height: 1; font-size: 14px; }',
