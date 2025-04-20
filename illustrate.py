@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import json
 import argparse
@@ -42,9 +41,10 @@ seed concept: {seed}
 
 return only the sentence you will be parsed as string no punctuation no comment just the prompt. 
 Must be 100 words max. Half of prompt describes style half describe content 
-both foreground and background and focal. Use dreamy, surreal imagery with 
-expressionist brushstrokes, muted pastel palette, intricate symbolic details.
-No text, no writing, no letters or words in the image."""
+both foreground and background and focal. 
+The image must not include any human character except faraway silhouettes. 
+Use dreamy, surreal imagery with expressionist brushstrokes, muted pastel palette, 
+intricate symbolic details. NO TEXT, no writing, no letters or words in the image."""
             
             # Call the local LLM API
             response = requests.post(
@@ -60,7 +60,13 @@ No text, no writing, no letters or words in the image."""
             if response.status_code == 200:
                 llm_response = response.json().get("response", "")
                 artistic_prompt = llm_response.strip()
-                print(f"LLM-enhanced prompt: Poem(seed={seed}, theme={theme}, text={combined_poem} -> {artistic_prompt}")
+                
+                # Print poem details and enhanced prompt for debugging
+                print(f"\nPoem details:")
+                print(f"Theme: {theme}")
+                print(f"Seed: {seed}")
+                print(f"Lines: {lines}")
+                print(f"\nLLM-enhanced prompt: {artistic_prompt}")
                 
                 # Safety check for length
                 if len(artistic_prompt.split()) > 120:
@@ -247,22 +253,20 @@ def upscale_image(image, scale=2, method="super-image"):
         print(f"Error in basic upscaling: {str(e)}")
         return image  # Return original if all fails
 
-
 def overlay_poem_on_image(image, poem, uppercase_chance=0.3):
-    """Add poem text overlay to image in a motivational poster style"""
+    """Add poem text overlay directly on the image"""
     from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
     import random
     
-    # Create a new image with extra space for text
+    # Get image dimensions
     img_width, img_height = image.size
-    new_height = int(img_height * 1.3)  # Add 30% more height for text
-    canvas = Image.new('RGB', (img_width, new_height), (0, 0, 0))
     
-    # Paste the generated image
-    canvas.paste(image, (0, 0))
+    # Create a copy of the image to work with
+    canvas = image.copy()
     
     # Prepare for drawing
     draw = ImageDraw.Draw(canvas)
+    
     
     # Try to load a nice font, fall back to default if not available
     try:
@@ -293,12 +297,127 @@ def overlay_poem_on_image(image, poem, uppercase_chance=0.3):
         title_font = ImageFont.load_default()
         body_font = ImageFont.load_default()
     
+    # Position text in lower third of the image
+    title_y = int(img_height * 0.7)  # 70% down the image
+    poem_y = title_y + int(img_width/25)  # Start poem text below title
+    
+    # Draw semi-transparent background for text
+    overlay = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    overlay_draw.rectangle([(0, title_y - 10), (img_width, img_height)], 
+                         fill=(0, 0, 0, 180))  # Black with 70% opacity
+    
+    # Make sure image is in RGBA mode for compositing
+    if canvas.mode != 'RGBA':
+        canvas = canvas.convert('RGBA')
+    canvas = Image.alpha_composite(canvas, overlay)
+    
+    # Create a new drawing context for the composited image
+    draw = ImageDraw.Draw(canvas)
+    
+    # Use theme as title - with WHITE color for visibility
+    title = poem["theme"]
+    if random.random() < uppercase_chance:
+        title = title.upper()
+    
+    # Draw title - with bright white color (255,255,255)
+    try:
+        # Calculate title dimensions
+        if hasattr(title_font, 'getbbox'):
+            title_bbox = title_font.getbbox(title)
+            title_width = title_bbox[2] - title_bbox[0]
+            draw.text((img_width/2 - title_width/2, title_y), 
+                    title, fill=(255, 255, 255), font=title_font)
+        else:
+            # Fallback
+            draw.text((img_width/2, title_y), 
+                    title, fill=(255, 255, 255), font=title_font, align="center")
+            
+        # Draw poem lines with white text
+        y_position = poem_y
+        for line in poem["lines"]:
+            draw.text((img_width/2, y_position), 
+                    line, fill=(255, 255, 255), font=body_font, align="center")
+            y_position += int(img_width/25)  # Fixed line spacing
+            
+    except Exception as e:
+        # Emergency fallback
+        print(f"Text drawing error: {str(e)}")
+        draw.text((10, title_y), 
+                title.upper(), fill=(255, 255, 255), font=ImageFont.load_default())
+        y_position = title_y + 20
+        for line in poem["lines"]:
+            draw.text((10, y_position), 
+                    line, fill=(255, 255, 255), font=ImageFont.load_default())
+            y_position += 15
+    
+    # Convert back to RGB for saving
+    canvas = canvas.convert('RGB')
+    return canvas
+    
+    
+    # Position text in lower third of the image
+    title_y = int(img_height * 0.7)  # 70% down the image
+    poem_y = title_y + int(img_width/25)  # Start poem text below title
+    
+    # Add semi-transparent background for better text visibility
+    # Draw a rectangle behind the text area
+    overlay = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    text_bg_height = img_height - title_y + int(img_width/12)  # Height needed for text
+    overlay_draw.rectangle([(0, title_y - 10), (img_width, img_height)], 
+                         fill=(0, 0, 0, 180))  # Black with 70% opacity
+    
+    # Merge the overlay with the image
+    if canvas.mode != 'RGBA':
+        canvas = canvas.convert('RGBA')
+    canvas = Image.alpha_composite(canvas, overlay)
+    canvas = canvas.convert('RGB')  # Convert back to RGB
+    
+    # Create a new drawing context for the composited image
+    draw = ImageDraw.Draw(canvas)
+    
+    # Try to load a nice font, fall back to default if not available
+    try:
+        # Try to find a good font, these are common on many systems
+        font_options = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+            "/usr/share/fonts/TTF/Arial.ttf",
+            "/Library/Fonts/Arial.ttf",
+            "/Windows/Fonts/Arial.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
+            # Add more fallback options
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSerif.ttf",
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+        ]
+        
+        font_path = None
+        for option in font_options:
+            if os.path.exists(option):
+                font_path = option
+                break
+        
+        if font_path:
+            title_font = ImageFont.truetype(font_path, size=int(img_width/15))
+            body_font = ImageFont.truetype(font_path, size=int(img_width/25))
+        else:
+            # Fall back to default font
+            title_font = ImageFont.load_default()
+            body_font = ImageFont.load_default()
+    except Exception as e:
+        print(f"Font loading error: {str(e)}")
+        # If any error occurs with fonts, use default
+        title_font = ImageFont.load_default()
+        body_font = ImageFont.load_default()
+    
     # Use theme as title
     title = poem["theme"]
     if random.random() < uppercase_chance:
         title = title.upper()
     
-    # Wrap text to fit the image width
+    # Prepare poem lines with random uppercase styling
     wrapped_lines = []
     for line in poem["lines"]:
         # Stylize the text - sometimes uppercase
@@ -312,8 +431,6 @@ def overlay_poem_on_image(image, poem, uppercase_chance=0.3):
         else:
             wrapped_lines.append(line)
     
-    poem_text = "\n".join(wrapped_lines)
-    
     # Positions for text
     title_y = img_height + 20
     poem_y = title_y + int(img_width/12)
@@ -321,21 +438,128 @@ def overlay_poem_on_image(image, poem, uppercase_chance=0.3):
     # Add a subtle shadow to make text more readable
     shadow_offset = 3
     
-    # Draw title with shadow
-    draw.text((img_width/2 + shadow_offset, title_y + shadow_offset), 
-              title, fill=(30, 30, 30), font=title_font, anchor="mt")
-    draw.text((img_width/2, title_y), 
-              title, fill=(255, 255, 255), font=title_font, anchor="mt")
-    
-    # Draw poem with shadow
-    draw.text((img_width/2 + shadow_offset, poem_y + shadow_offset), 
-              poem_text, fill=(30, 30, 30), font=body_font, anchor="mt", align="center")
-    draw.text((img_width/2, poem_y), 
-              poem_text, fill=(220, 220, 220), font=body_font, anchor="mt", align="center")
-    
-    return canvas
-
-
+    # METHOD 1: Modern approach with getbbox (for newer Pillow versions)
+    try:
+        # Check if getbbox is available
+        if hasattr(title_font, 'getbbox'):
+            # Calculate title dimensions
+            title_bbox = title_font.getbbox(title)
+            title_width = title_bbox[2] - title_bbox[0]
+            
+            # Draw title with shadow
+            draw.text((img_width/2 - title_width/2 + shadow_offset, title_y + shadow_offset), 
+                      title, fill=(30, 30, 30), font=title_font)
+            draw.text((img_width/2 - title_width/2, title_y), 
+                      title, fill=(255, 255, 255), font=title_font)
+            
+            # Draw poem lines one by one
+            y_position = poem_y
+            for line in wrapped_lines:
+                text_bbox = body_font.getbbox(line)
+                line_width = text_bbox[2] - text_bbox[0]
+                
+                # Draw shadow and text
+                draw.text((img_width/2 - line_width/2 + shadow_offset, y_position + shadow_offset),
+                         line, fill=(30, 30, 30), font=body_font)
+                draw.text((img_width/2 - line_width/2, y_position),
+                         line, fill=(220, 220, 220), font=body_font)
+                
+                # Calculate line height from bounding box and add spacing
+                line_height = text_bbox[3] - text_bbox[1]
+                y_position += line_height + 8
+                
+            print("Overlay created using modern method (getbbox)")
+            return canvas
+        else:
+            raise AttributeError("getbbox not available")
+            
+    except (AttributeError, TypeError) as e:
+        print(f"Modern method failed: {str(e)}")
+        # METHOD 2: Legacy approach with textsize (for older Pillow versions)
+        try:
+            if hasattr(draw, 'textsize'):
+                # Calculate title dimensions
+                title_width, title_height = draw.textsize(title, font=title_font)
+                
+                # Draw title with shadow
+                draw.text((img_width/2 - title_width/2 + shadow_offset, title_y + shadow_offset), 
+                          title, fill=(30, 30, 30), font=title_font)
+                draw.text((img_width/2 - title_width/2, title_y), 
+                          title, fill=(255, 255, 255), font=title_font)
+                
+                # Draw poem lines one by one
+                y_position = poem_y
+                for line in wrapped_lines:
+                    line_width, line_height = draw.textsize(line, font=body_font)
+                    
+                    # Draw shadow and text
+                    draw.text((img_width/2 - line_width/2 + shadow_offset, y_position + shadow_offset),
+                             line, fill=(30, 30, 30), font=body_font)
+                    draw.text((img_width/2 - line_width/2, y_position),
+                             line, fill=(220, 220, 220), font=body_font)
+                    
+                    # Move to next line position
+                    y_position += line_height + 8
+                    
+                print("Overlay created using legacy method (textsize)")
+                return canvas
+            else:
+                raise AttributeError("textsize not available")
+                
+        except Exception as e2:
+            print(f"Legacy method failed: {str(e2)}")
+            # METHOD 3: Absolute fallback - simple centered text without size calculations
+            try:
+                # Draw title at fixed position
+                # Estimate title width as 80% of image width
+                text_width = int(img_width * 0.8)
+                left_margin = (img_width - text_width) // 2
+                
+                # Draw title (centered manually)
+                draw.text((img_width // 2, title_y), 
+                          title, fill=(255, 255, 255), font=title_font,
+                          align="center")
+                
+                # Draw text in a block with estimated positioning
+                y_position = poem_y
+                line_height = int(img_width/20)  # Estimated line height
+                
+                for line in wrapped_lines:
+                    # Draw each line with estimated center position
+                    draw.text((img_width // 2, y_position), 
+                              line, fill=(220, 220, 220), font=body_font,
+                              align="center")
+                    y_position += line_height
+                    
+                print("Overlay created using simplified fallback method")
+                return canvas
+                
+            except Exception as e3:
+                print(f"Simplified method failed: {str(e3)}")
+                # METHOD 4: Emergency fallback - minimal approach with fixed positioning
+                try:
+                    # Use default font
+                    default_font = ImageFont.load_default()
+                    
+                    # Draw title with fixed positioning
+                    draw.text((10, img_height + 10), 
+                              title.upper(), fill=(255, 255, 255), font=default_font)
+                    
+                    # Draw poem lines with fixed positioning
+                    y_position = img_height + 40
+                    for line in poem["lines"]:
+                        draw.text((10, y_position), 
+                                  line, fill=(220, 220, 220), font=default_font)
+                        y_position += 15
+                    
+                    print("Overlay created using emergency fallback method")
+                    return canvas
+                    
+                except Exception as e4:
+                    print(f"Emergency method failed: {str(e4)}")
+                    # If all attempts fail, just return the original canvas with image
+                    return canvas
+                    
 def load_janus_model(model_path="deepseek-ai/Janus-Pro-1B", device="cuda"):
     """Load Janus-Pro-1B model with memory optimizations"""
     print(f"Loading model from {model_path}...")
@@ -354,6 +578,12 @@ def load_janus_model(model_path="deepseek-ai/Janus-Pro-1B", device="cuda"):
     # Determine dtype based on device
     dtype = torch.bfloat16 if torch.cuda.is_available() and device == "cuda" else torch.float16
     
+    # Load the processor with fast tokenization
+    vl_chat_processor = VLChatProcessor.from_pretrained(
+        model_path,
+        use_fast=True    # Use fast tokenizer to avoid warning
+    )
+    
     # Load the model with memory optimizations
     vl_gpt = AutoModelForCausalLM.from_pretrained(
         model_path,
@@ -368,9 +598,6 @@ def load_janus_model(model_path="deepseek-ai/Janus-Pro-1B", device="cuda"):
     else:
         vl_gpt = vl_gpt.to(dtype)
         device = "cpu"  # Fallback to CPU
-    
-    # Load processor
-    vl_chat_processor = VLChatProcessor.from_pretrained(model_path)
     
     print(f"Model loaded successfully on {device}!")
     return vl_gpt, vl_chat_processor
@@ -394,7 +621,7 @@ def process_poems(poems, vl_gpt, vl_chat_processor, args):
         # Create prompt from poem using LLM if available
         llm_url = args.llm_url if args.use_llm else None
         prompt = create_artistic_prompt(poem, llm_url, args.llm_model)
-        print(f"Prompt: {prompt}")
+        # print(f"Prompt: {prompt}")
         
         try:
             # Create a seed from the poem if not provided
@@ -419,39 +646,41 @@ def process_poems(poems, vl_gpt, vl_chat_processor, args):
             seed_word = poem["seed"].replace(" ", "_")
             base_filename = f"poem_{i+1}_{theme}_{seed_word}"
             
-            # Save original image
-            orig_filename = f"{args.output}/{base_filename}_original.jpg"
-            image.save(orig_filename)
-            print(f"Saved original image to {orig_filename}")
-            
-            # Upscale the image if requested
-            if args.upscale > 1:
-                upscaled_image = upscale_image(
+            # Upscale the image if requested (scale > 1)
+            if args.scale > 1:
+                image = upscale_image(
                     image, 
-                    scale=args.upscale, 
+                    scale=args.scale, 
                     method="super-image" if args.use_super_image else "basic"
                 )
-                upscaled_filename = f"{args.output}/{base_filename}_upscaled.jpg"
-                upscaled_image.save(upscaled_filename)
-                print(f"Saved upscaled image to {upscaled_filename}")
-                
-                # Use upscaled image for overlay if available
-                image_for_overlay = upscaled_image
-            else:
-                image_for_overlay = image
             
-            # Save with poem overlay if requested
+            # Save with poem overlay if requested, otherwise save plain image
             if args.overlay:
                 try:
-                    overlay_image = overlay_poem_on_image(image_for_overlay, poem)
-                    overlay_filename = f"{args.output}/{base_filename}.jpg"
-                    overlay_image.save(overlay_filename)
-                    print(f"Saved image with poem overlay to {overlay_filename}")
+                    overlay_image = overlay_poem_on_image(image, poem)
+                    filename = f"{args.output}/{base_filename}.jpg"
+                    overlay_image.save(filename)
+                    print(f"Saved image with poem overlay to {filename}")
                 except Exception as e:
                     print(f"Error creating overlay: {str(e)}")
+                    # Fallback to saving without overlay
+                    filename = f"{args.output}/{base_filename}.jpg"
+                    image.save(filename)
+                    print(f"Saved image without overlay to {filename}")
+            else:
+                filename = f"{args.output}/{base_filename}.jpg"
+                image.save(filename)
+                print(f"Saved image to {filename}")
             
         except Exception as e:
             print(f"Error processing poem {i+1}: {str(e)}")
+            # Save error details for debugging
+            try:
+                error_log = f"{args.output}/error_log.txt"
+                with open(error_log, "a") as f:
+                    f.write(f"Error processing poem {i+1} ({poem['theme']}/{poem['seed']}):\n{str(e)}\n\n")
+            except:
+                pass
             torch.cuda.empty_cache()
             gc.collect()
         
@@ -476,8 +705,8 @@ def main():
     parser.add_argument("--no-overlay", action="store_false", dest="overlay",
                       help="Don't overlay poem text on image")
     
-    # New arguments for enhanced features
-    parser.add_argument("--upscale", type=int, default=2, help="Upscale factor (1 = no upscaling)")
+    # Simplified parameters
+    parser.add_argument("--scale", type=int, default=2, help="Upscale factor (1 = no upscaling)")
     parser.add_argument("--use-super-image", action="store_true", default=True,
                       help="Use super-image for high-quality upscaling")
     parser.add_argument("--no-super-image", action="store_false", dest="use_super_image",
