@@ -20,14 +20,54 @@ import random
 import socketserver
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Optional
 
 import spacy
 
-# Initial seed words
 WORD_SET = [
     "dog", "flower", "windmill", "cliff", "forest", "city", "home", "light", "excess", "clean",
-    # ... other words ... (keeping the original WORD_SET)
+    "crossroads", "horizon", "road", "settlement", "boulder", "outcropping", "signpost", "well",
+    "shelter", "storm", "scrub", "crop field", "farm", "silo", "bird flock", "sign",
+    "detour", "rest stop", "traffic jam", "traffic", "tunnel", "convenience store", "mile marker",
+    "cave", "windbreak", "street", "path", "river", "hill", "land", "line", "house",
+    "bank", "bridge", "rock", "valley", "wind", "sky", "landscape", "ocean", "cloud",
+    "cliff", "expanse", "shore", "peak", "sphere", "lake", "moon", "background", "darkness",
+    "desert", "twilight", "boundary", "surface", "colony", "village", "trade", "district",
+    "territory", "province", "cliff", "pebble", "crag", "ledge", "slab", "rubble", "mound",
+    "ravine", "pillar", "brick", "bluff", "bush", "sand", "stump", "chunk", "crater", "timber",
+    "gravestone", "railway", "canal", "mill", "farm", "undergrowth", "shrub", "thicket",
+    "shrubbery", "brush", "birch", "estate", "garden", "field", "plant", "crop", "drink", "trust",
+    "trace", "sky", "cross", "road", "railway", "roadway", "lane", "route", "trail", "ridge",
+    "coast", "beach", "canyon", "travel", "stream", "refuge", "comfort", "shadow", "shade",
+    "roof", "outcrop", "mountainside", "wasteland", "boulder", "pinnacle", "rain", "weather",
+    "fire", "breeze", "ice", "sea", "garden", "sky", "bird", "sunset", "dam", "river", "wash",
+    "ocean", "hill", "valley", "tree", "flower", "flame", "fire", "tree"
+]
+WORD_SET += [
+    # Death, grief, remembrance
+    "grave", "coffin", "mourning", "ashes", "sepulcher", "tomb", "funeral", "farewell",
+    "loss", "lament", "dirge", "obituary", "requiem", "epitaph", "wake", "veil", "sorrow",
+    "keening", "grief", "shroud", "wither", "transience",
+
+    # Contemplation, meaning, wisdom
+    "stillness", "echo", "memory", "legacy", "thought", "reflection", "wisdom", "insight",
+    "truth", "silence", "reverie", "meditation", "presence", "absence", "eternity", "paradox",
+    "soul", "mind", "spirit", "understanding", "acceptance", "seeking",
+
+    # Beauty, time, seasons
+    "autumn", "winter", "leaves", "petal", "bloom", "blossom", "cycle", "season", "equinox",
+    "solstice", "sunset", "dusk", "twilight", "dawn", "hour", "clock", "calendar", "pendulum",
+    "decay", "growth", "moment", "fleeting", "passing", "fade", "renewal", "ebb", "flow",
+
+    # Flowers (emphasized)
+    "rose", "lily", "chrysanthemum", "poppy", "tulip", "violet", "iris", "daffodil", "peony",
+    "camellia", "lavender", "carnation", "sunflower", "magnolia", "hyacinth", "daisy",
+    "wilt", "bloom", "garland", "bouquet", "wreath", "meadow", "perfume", "dew", "blush",
+
+    # Heritage, remembrance
+    "ancestor", "portrait", "lineage", "roots", "stone", "monument", "keepsake", "heirloom",
+    "name", "inscription", "story", "voice", "photo", "ruin", "echo", "trace", "fragment",
+    "inheritance", "generation", "reminder", "archive", "dust", "history", "ritual", "memory", "remember"
 ]
 
 
@@ -76,6 +116,7 @@ def count_sentence_syllables(sentence: str) -> int:
     # Split the sentence into words and count syllables for each
     words = sentence.split()
     return sum(count_syllables(word) for word in words)
+
 
 class PoemGenerator:
     def __init__(self, input_csv: str, nlp_model: str = "en_core_web_lg", num_poems: int = 20,
@@ -170,10 +211,12 @@ class PoemGenerator:
         stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'there', 'here', 'that', 'this', 'those',
                      'these', 'it', 'its', 'is', 'was', 'be', 'been', 'being', 'am', 'are', 'were', 'will', 'would',
                      'shall', 'should', 'may', 'might', 'must', 'can', 'could', 'you', 'your', 'we', 'our', 'they',
-                     'their', 'he', 'his', 'she', 'her', 'i', 'my', 'me', 'mine', 'what', 'who', 'whom', 'which',
+                     'their', 'he', 'his', 'him', 'she', 'her', 'i', 'my', 'me', 'mine', 'what', 'who', 'whom', 'which',
                      'where', 'when', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some', 'such',
-                     'have', 'got', 'does', 'has', 'have', 'had', 'need', 'cause', 'miss', 'jan', 'feb', 'mar', 'apr',
-                     'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec', 'no', 'nor', 'not', 'only', 'own', 'same',
+                     'have', 'got', 'does', 'did', 'was', 'has', 'have', 'had', 'need', 'cause', 'miss',
+                     'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+                     'by', 'now', 'to', 'be', 'not', 'you', 'find', 'ought', 'we', 'they', 'us', 'dare',
+                     'no', 'nor', 'not', 'only', 'own', 'same',
                      'so', 'than', 'too', 'very', 'let', 'just', 'now', 'ever'}
 
         # Common abbreviations, stems, and shortened forms to filter out
@@ -181,6 +224,8 @@ class PoemGenerator:
                              'nothin', 'lovin', 'havin', 'fla', 'calif', 'tenn', 'okla', 'wis',
                              'ind', 'mich', 'mont', 'colo', 'conn', 'bros', 'sen', 'gen', 'mrs',
                              'gov', 'ariz', 'minn', 'ark', 'ill', 'wash', 'mass', 'dept', 'dist',
+                             'sha', 'kan', 'ala', 'prof', 'ore', 'rep', 'nuff', 'gon', 'deb', 'xdd',
+                             'rev', 'adm', 'nev', 'messrs',
                              'div', 'assn', 'assoc', 'mfg', 'natl', 'intl', 'amer', 'univ', 'tech',
                              'admin', 'mgr', 'pres', 'dir', 'coord', 'eng', 'sci', 'acct', 'atty'}
 
@@ -234,21 +279,30 @@ class PoemGenerator:
                 if len(result) >= n:
                     break
 
-        print(f"Found {len(result)} words related to '{word}'")
+        print(f"Found {len(result)} words related to '{word}': {result[:10]}")
         return result
 
-    def make_poem(self, seed_word: str) -> Tuple[List[str], str]:
+    def make_poem(self, seed_word: str, feet_pattern: Optional[str] = None) -> tuple[list[str], str]:
         """
-        Generate a poem based on a seed word
+        Generate a poem based on a seed word and optional syllable pattern
 
         Args:
             seed_word: The word to base the poem on
+            feet_pattern: Optional pattern of syllables per line (e.g., "575" for haiku)
 
         Returns:
             Tuple of (poem lines, theme word)
         """
         # Find related words to the seed word
         related_words = self.find_related_words(seed_word)
+
+        # Use the first properly formed related word as the theme (not a partial word)
+        theme = seed_word
+        for word in sorted(related_words, key=lambda x: len(x), reverse=True):
+            if len(word) > 3:
+                theme = word
+                break
+
         if not related_words:
             related_words = [seed_word]
 
@@ -256,29 +310,133 @@ class PoemGenerator:
         if seed_word not in related_words:
             related_words.append(seed_word)
 
-        # Build a cluster of sentences containing those words
+        # Parse feet pattern if provided
+        feet_targets = None
+        if feet_pattern:
+            feet_targets = []
+            # Handle patterns like "575" for haiku or "12x4" for 4 lines of 12 syllables
+            if 'x' in feet_pattern:
+                parts = feet_pattern.split('x')
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                    syl_count = int(parts[0])
+                    line_count = int(parts[1])
+                    feet_targets = [syl_count] * line_count
+            else:
+                # Each digit represents syllables in one line
+                for char in feet_pattern:
+                    if char.isdigit():
+                        feet_targets.append(int(char))
+
+        # If we have a specific pattern, adjust our poem length
+        if feet_targets:
+            self.poem_length = len(feet_targets)
+
+        # Pre-calculate syllable counts for sentences to avoid repeated computation
+        sentence_syllables = {}
+        for sentence in self.sentences:
+            sentence_syllables[sentence] = count_sentence_syllables(sentence)
+
+        # Build a cluster of sentences containing those words and matching syllable counts
         cluster = []
-        for word in related_words:
-            for sentence in self.sentences:
-                if word in sentence.split() and sentence not in cluster:
-                    cluster.append(sentence)
-                    if len(cluster) >= self.poem_length:
+
+        if feet_targets:
+            # For each target syllable count, find matching sentences
+            for i, target_syllables in enumerate(feet_targets):
+                target_met = False
+
+                # First try to find a sentence with exact syllable count and containing a related word
+                for word in related_words:
+                    for sentence in self.sentences:
+                        if word in sentence.split() and sentence not in cluster:
+                            syl_count = sentence_syllables[sentence]
+                            # Allow a margin of +/- 1 syllable
+                            if abs(syl_count - target_syllables) <= 1:
+                                cluster.append(sentence)
+                                target_met = True
+                                break
+
+                    if target_met:
                         break
 
-            if len(cluster) >= self.poem_length:
-                break
+                # If we couldn't find a matching sentence, use the closest one
+                if not target_met:
+                    best_sentence = None
+                    best_diff = float('inf')
 
-        # If we don't have enough sentences, add more from the seed word
-        if len(cluster) < min(self.poem_length, 5):
-            for sentence in self.sentences:
-                if seed_word in sentence and sentence not in cluster:
-                    cluster.append(sentence)
+                    for sentence in self.sentences:
+                        if sentence not in cluster:
+                            for word in related_words:
+                                if word in sentence.split():
+                                    syl_diff = abs(sentence_syllables[sentence] - target_syllables)
+                                    if syl_diff < best_diff:
+                                        best_diff = syl_diff
+                                        best_sentence = sentence
+
+                    if best_sentence:
+                        cluster.append(best_sentence)
+                    else:
+                        # If still no match, just find any sentence with close syllable count
+                        for sentence in self.sentences:
+                            if sentence not in cluster:
+                                syl_diff = abs(sentence_syllables[sentence] - target_syllables)
+                                if syl_diff < best_diff:
+                                    best_diff = syl_diff
+                                    best_sentence = sentence
+
+                        if best_sentence:
+                            cluster.append(best_sentence)
+        else:
+            # Original approach for non-syllable-constrained poems
+            for word in related_words:
+                for sentence in self.sentences:
+                    if word in sentence.split() and sentence not in cluster:
+                        cluster.append(sentence)
+                        if len(cluster) >= self.poem_length:
+                            break
+
                 if len(cluster) >= self.poem_length:
                     break
 
-        # Shuffle the cluster and limit to poem_length
-        random.shuffle(cluster)
-        return cluster[:self.poem_length], seed_word
+            # If we don't have enough sentences, add more from the seed word
+            if len(cluster) < min(self.poem_length, 5):
+                for sentence in self.sentences:
+                    if seed_word in sentence and sentence not in cluster:
+                        cluster.append(sentence)
+                    if len(cluster) >= self.poem_length:
+                        break
+
+        # If we still don't have enough lines, fill in with related sentences
+        while len(cluster) < self.poem_length and len(cluster) < len(self.sentences):
+            best_sentence = None
+            best_score = -1
+
+            for sentence in self.sentences:
+                if sentence not in cluster:
+                    # Calculate a relevance score
+                    score = 0
+                    for word in related_words:
+                        if word in sentence:
+                            score += 1
+
+                    if score > best_score:
+                        best_score = score
+                        best_sentence = sentence
+
+            if best_sentence:
+                cluster.append(best_sentence)
+            else:
+                # If all else fails, add a random sentence
+                remaining = [s for s in self.sentences if s not in cluster]
+                if remaining:
+                    cluster.append(random.choice(remaining))
+                else:
+                    break
+
+        # For syllable-constrained poems, don't shuffle
+        if not feet_targets:
+            random.shuffle(cluster)
+
+        return cluster[:self.poem_length], theme
 
     def choose_next_seed(self, current_seed: str) -> str:
         """Choose the next seed word based on the current one"""
@@ -291,12 +449,13 @@ class PoemGenerator:
         # Otherwise choose a random word from our seed set
         return random.choice(WORD_SET)
 
-    def generate_poem(self, seed_word: Optional[str] = None) -> Dict[str, Any]:
+    def generate_poem(self, seed_word: Optional[str] = None, feet_pattern: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate a single poem
 
         Args:
             seed_word: Optional seed word to use
+            feet_pattern: Optional pattern of syllables (e.g., "575" for haiku)
 
         Returns:
             Dictionary containing poem data
@@ -304,10 +463,14 @@ class PoemGenerator:
         if not seed_word:
             seed_word = random.choice(WORD_SET)
 
-        poem_lines, theme = self.make_poem(seed_word)
+        poem_lines, theme = self.make_poem(seed_word, feet_pattern)
+        syllable_counts = [count_sentence_syllables(line) for line in poem_lines]
+
         return {
             "lines": poem_lines,
             "theme": theme,
+            "seed": seed_word,
+            "syllable_counts": syllable_counts,
             "timestamp": time.time()
         }
 
@@ -421,7 +584,7 @@ class PoemGenerator:
         """
         if format == "txt":
             for poem in poems:
-                filename = os.path.join(self.output_dir, f"poem_{poem['id']}.txt")
+                filename = os.path.join(self.output_dir, f"poem_{poem['id'] if 'id' in poem else '1'}.txt")
                 with open(filename, 'w', encoding='utf-8') as f:
                     f.write(f"Theme: {poem['theme']}\n\n")
                     for line in poem['lines']:
@@ -430,7 +593,8 @@ class PoemGenerator:
             # Also save all poems to a single file
             with open(os.path.join(self.output_dir, "all_poems.txt"), 'a+', encoding='utf-8') as f:
                 for poem in poems:
-                    f.write(f"--- Poem {poem['id']} (Theme: {poem['theme']}) ---\n")
+                    poem_id = poem['id'] if 'id' in poem else ''
+                    f.write(f"--- Poem {poem_id} (Theme: {poem['theme']}) ---\n")
                     for line in poem['lines']:
                         f.write(f"{line}\n")
                     f.write("\n\n")
@@ -468,8 +632,10 @@ class PoemGenerator:
             # Save as JSON
             with open(os.path.join(self.output_dir, "poems.json"), 'w', encoding='utf-8') as f:
                 json.dump(poems, f, indent=2)
-
+        else:
+            print(f"Unknown format {format}...")
         print(f"Saved {len(poems)} poems to {self.output_dir}")
+
 
 class PoemHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """Custom HTTP request handler for serving poems"""
@@ -509,6 +675,7 @@ class PoemHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             # Default handler for other paths
             super().do_GET()
+
 
 def run_server(generator, port):
     """
@@ -606,6 +773,8 @@ def main():
     parser.add_argument("-b", "--batch", type=int, default=None, help="Generate a large batch of poems (specify count)")
     parser.add_argument("-w", "--workers", type=int, default=4, help="Number of worker processes for batch generation")
     parser.add_argument("-r", "--related", type=str, default=None, help="Test related words")
+    parser.add_argument("--feet", type=str, default=None,
+                        help="Pattern for syllable counts (e.g., '575' for haiku, '12x4' for alexandrines)")
     parser.add_argument("--test", action="store_true", help="Run tests for word similarity")
     args = parser.parse_args()
 
@@ -638,11 +807,23 @@ def main():
 
     # If batch is specified, generate a large batch
     elif args.batch:
-        poems = generator.generate_large_batch(args.batch, args.workers)
+        # Need to update the generate_large_batch logic to support feet patterns
+        if args.feet:
+            poems = []
+            for _ in range(args.batch):
+                poems.append(generator.generate_poem(seed_word=args.seed, feet_pattern=args.feet))
+        else:
+            poems = generator.generate_large_batch(args.batch, args.workers)
         generator.save_poems(poems, format=args.format)
     # Otherwise, generate regular number of poems
     else:
-        poems = generator.generate_poems()
+        if args.feet:
+            poems = []
+            for _ in range(generator.num_poems):
+                poem = generator.generate_poem(seed_word=args.seed, feet_pattern=args.feet)
+                poems.append(poem)
+        else:
+            poems = generator.generate_poems()
         generator.save_poems(poems, format=args.format)
 
 

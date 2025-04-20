@@ -45,7 +45,7 @@ def clean_sentence(text):
     skip_keywords = [
         '?', 'grammar', 'pronunciation', 'punctuation', 'punctuate',
         'english', 'sentence', 'verb', 'adjective', 'noun', 'question',
-        ' or ', 'gerund', 'tense', ':', ' vs ', ' v ', 'perfect'
+        ' or ', 'gerund', 'tense', ':', ' vs ', ' vs. ', ' v ', 'perfect'
     ]
     
     for keyword in skip_keywords:
